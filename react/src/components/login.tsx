@@ -5,7 +5,6 @@ import { useEffect, useRef, useState } from "react"
 import { Button } from "./ui/button"
 import { Input } from "./ui/input"
 import { Card } from "./ui/card"
-import { GoogleSignInButton } from "./GoogleSignInButton"
 import { Link, useNavigate } from "react-router-dom"
 import { useAuth } from "../lib/auth"
 import { Header } from "./header"
@@ -20,7 +19,7 @@ export function Login() {
 	const [error, setError] = useState<string | null>(null)
 	const auth = useAuth()
 
-	// replaced inline SDK logic with `GoogleSignInButton` component
+	const googleButtonRef = useRef<HTMLDivElement | null>(null)
 	const [showPinModal, setShowPinModal] = useState(false)
 	const [googleCredential, setGoogleCredential] = useState<string | null>(null)
 	const [pinDigits, setPinDigits] = useState<string[]>(['', '', '', ''])
@@ -35,7 +34,78 @@ export function Login() {
 	const [googleLoading, setGoogleLoading] = useState(false)
 	const [setPinForFuture, setSetPinForFuture] = useState(true)
 
-	// Google SDK load and button rendering is handled by `GoogleSignInButton`.
+	useEffect(() => {
+		const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined
+		if (!clientId) return
+
+		function setRenderedButtonFullWidth() {
+			try {
+				const root = googleButtonRef.current
+				if (!root) return
+				const btn = root.querySelector('button') as HTMLButtonElement | null
+				if (btn) {
+					btn.style.width = '100%'
+					btn.style.display = 'flex'
+					btn.style.justifyContent = 'center'
+					btn.setAttribute('type', 'button')
+					btn.classList.add('w-full')
+				}
+			} catch (err) {
+				console.debug('setRenderedButtonFullWidth failed', err)
+			}
+		}
+		function handleCredentialResponse(response: any) {
+			if (response && response.credential) {
+				const cred = response.credential
+				// ask backend whether a PIN already exists for this credential
+				if (auth.checkGoogleCredential) {
+					auth.checkGoogleCredential(cred).then((info) => {
+						setHasSavedPin(info.hasPin)
+						setGoogleCredential(cred)
+						setShowPinModal(true)
+					}).catch((err) => {
+						console.debug('check google credential failed', err)
+						// fallback: still open PIN modal but assume no saved PIN
+						setHasSavedPin(false)
+						setGoogleCredential(cred)
+						setShowPinModal(true)
+					})
+				} else {
+					setHasSavedPin(null)
+					setGoogleCredential(cred)
+					setShowPinModal(true)
+				}
+			}
+		}
+
+		// load the Google Identity Services library
+		if (!(window as any).google) {
+			const s = document.createElement('script')
+			s.src = 'https://accounts.google.com/gsi/client'
+			s.async = true
+			s.defer = true
+			s.onload = () => {
+				try {
+					;(window as any).google.accounts.id.initialize({ client_id: clientId, callback: handleCredentialResponse })
+					if (googleButtonRef.current) {
+						;(window as any).google.accounts.id.renderButton(googleButtonRef.current, { theme: 'outline', size: 'large' })
+						setTimeout(setRenderedButtonFullWidth, 50)
+					}
+				} catch (err) {
+					console.debug('google init failed', err)
+				}
+			}
+			document.head.appendChild(s)
+		} else {
+			try {
+				;(window as any).google.accounts.id.initialize({ client_id: clientId, callback: handleCredentialResponse })
+				if (googleButtonRef.current) {
+					;(window as any).google.accounts.id.renderButton(googleButtonRef.current, { theme: 'outline', size: 'large' })
+					setTimeout(setRenderedButtonFullWidth, 50)
+				}
+			} catch (err) { console.debug('google render failed', err) }
+		}
+	}, [auth])
 
 	async function godummy(e: React.MouseEvent) {
 		e.preventDefault()
@@ -171,26 +241,7 @@ export function Login() {
 								</div>
 
 								<div className="mt-2 text-center">
-									<GoogleSignInButton
-										onCredential={(cred) => {
-											if (auth.checkGoogleCredential) {
-												auth.checkGoogleCredential(cred).then((info) => {
-													setHasSavedPin(info.hasPin)
-													setGoogleCredential(cred)
-													setShowPinModal(true)
-												}).catch((err) => {
-													console.debug('check google credential failed', err)
-													setHasSavedPin(false)
-													setGoogleCredential(cred)
-													setShowPinModal(true)
-												})
-											} else {
-												setHasSavedPin(null)
-												setGoogleCredential(cred)
-												setShowPinModal(true)
-											}
-										}}
-									/>
+									<div ref={googleButtonRef} />
 									<div className="text-xs text-muted-foreground mt-2">Sign in with Google. A PIN will be required.</div>
 								</div>
 
