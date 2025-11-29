@@ -1,7 +1,7 @@
 
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Button } from "./ui/button"
 import { Input } from "./ui/input"
 import { Card } from "./ui/card"
@@ -19,6 +19,75 @@ export function Login() {
 	const [error, setError] = useState<string | null>(null)
 	const auth = useAuth()
 
+	const googleButtonRef = useRef<HTMLDivElement | null>(null)
+	const [showPinModal, setShowPinModal] = useState(false)
+	const [googleCredential, setGoogleCredential] = useState<string | null>(null)
+	const [pinDigits, setPinDigits] = useState<string[]>(['', '', '', ''])
+	const pinRefs = useRef<HTMLInputElement[]>([])
+	const [hasSavedPin, setHasSavedPin] = useState<boolean | null>(null)
+
+	useEffect(() => {
+		if (showPinModal) {
+			setTimeout(() => { try { pinRefs.current[0]?.focus() } catch (err) { console.debug('focus pin failed', err) } }, 100)
+		}
+	}, [showPinModal])
+	const [googleLoading, setGoogleLoading] = useState(false)
+	const [setPinForFuture, setSetPinForFuture] = useState(true)
+
+	useEffect(() => {
+		const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined
+		if (!clientId) return
+		function handleCredentialResponse(response: any) {
+			if (response && response.credential) {
+				const cred = response.credential
+				// ask backend whether a PIN already exists for this credential
+				if (auth.checkGoogleCredential) {
+					auth.checkGoogleCredential(cred).then((info) => {
+						setHasSavedPin(info.hasPin)
+						setGoogleCredential(cred)
+						setShowPinModal(true)
+					}).catch((err) => {
+						console.debug('check google credential failed', err)
+						// fallback: still open PIN modal but assume no saved PIN
+						setHasSavedPin(false)
+						setGoogleCredential(cred)
+						setShowPinModal(true)
+					})
+				} else {
+					setHasSavedPin(null)
+					setGoogleCredential(cred)
+					setShowPinModal(true)
+				}
+			}
+		}
+
+		// load the Google Identity Services library
+		if (!(window as any).google) {
+			const s = document.createElement('script')
+			s.src = 'https://accounts.google.com/gsi/client'
+			s.async = true
+			s.defer = true
+			s.onload = () => {
+				try {
+					;(window as any).google.accounts.id.initialize({ client_id: clientId, callback: handleCredentialResponse })
+					if (googleButtonRef.current) {
+						;(window as any).google.accounts.id.renderButton(googleButtonRef.current, { theme: 'outline', size: 'large' })
+					}
+				} catch (err) {
+					console.debug('google init failed', err)
+				}
+			}
+			document.head.appendChild(s)
+		} else {
+			try {
+				;(window as any).google.accounts.id.initialize({ client_id: clientId, callback: handleCredentialResponse })
+				if (googleButtonRef.current) {
+					;(window as any).google.accounts.id.renderButton(googleButtonRef.current, { theme: 'outline', size: 'large' })
+				}
+			} catch (err) { console.debug('google render failed', err) }
+		}
+	}, [auth])
+
 	async function godummy(e: React.MouseEvent) {
 		e.preventDefault()
 		setError(null)
@@ -31,6 +100,32 @@ export function Login() {
 			setError(msg || 'Sign in failed')
 		} finally {
 			setLoading(false)
+		}
+	}
+
+	async function handleGooglePinSubmit(e?: React.FormEvent) {
+		e?.preventDefault()
+		if (!googleCredential) return
+		const pin = pinDigits.join('')
+		if (!pin || pin.length !== 4) {
+			setError('Please enter your 4-digit PIN')
+			return
+		}
+		setGoogleLoading(true)
+		setError(null)
+		try {
+			// uses new auth method added to context
+			if (!auth.loginWithGoogle) throw new Error('Google login not supported')
+			await auth.loginWithGoogle(googleCredential, pin, setPinForFuture, remember)
+			navigate('/dashboard')
+		} catch (err: unknown) {
+			const msg = err instanceof Error ? err.message : String(err)
+			setError(msg || 'Google sign-in failed')
+		} finally {
+			setGoogleLoading(false)
+			setShowPinModal(false)
+			setPinDigits(['', '', '', ''])
+			setGoogleCredential(null)
 		}
 	}
 
@@ -126,6 +221,11 @@ export function Login() {
 									</Button>
 								</div>
 
+								<div className="mt-2 text-center">
+									<div ref={googleButtonRef} />
+									<div className="text-xs text-muted-foreground mt-2">Sign in with Google. A PIN will be required.</div>
+								</div>
+
 								{/* <div className="text-center text-sm text-muted-foreground">
 									Don’t have an account?{' '}
 									<Link to="/signup" className="text-primary hover:underline">
@@ -139,6 +239,74 @@ export function Login() {
 									</Link>
 								</div>
 							</form>
+
+							{/* PIN modal for Google sign-ins */}
+							{showPinModal && (
+								<div className="fixed inset-0 z-50 flex items-center justify-center">
+									<div className="absolute inset-0 bg-black/50" onClick={() => { setShowPinModal(false); setGoogleCredential(null); setPinDigits(['', '', '', '']) }} />
+									<div className="relative w-full max-w-sm mx-4 bg-card border-border rounded-lg shadow-lg p-6">
+										<h3 className="text-lg font-semibold mb-2">{hasSavedPin ? 'Enter your PIN' : 'Create a 4-digit PIN'}</h3>
+										<p className="text-sm text-muted-foreground mb-3">{hasSavedPin ? 'Enter the 4-digit PIN associated with your account.' : 'Create a 4-digit PIN to protect your Google sign-in.'}</p>
+										<form onSubmit={handleGooglePinSubmit} className="space-y-3">
+											<div className="flex items-center justify-center gap-2">
+												{[0,1,2,3].map((i) => (
+													<input
+														key={i}
+														ref={(el) => { if (el) pinRefs.current[i] = el }}
+														inputMode="numeric"
+														pattern="[0-9]*"
+														maxLength={1}
+														value={pinDigits[i]}
+														onChange={(e) => {
+															const v = e.target.value.replace(/[^0-9]/g, '').slice(0,1)
+															setPinDigits(prev => {
+																const next = [...prev]
+																next[i] = v
+																return next
+															})
+															if (v && pinRefs.current[i+1]) pinRefs.current[i+1].focus()
+														}}
+														onKeyDown={(e) => {
+															if (e.key === 'Backspace') {
+																if (pinDigits[i]) {
+																	setPinDigits(prev => {
+																		const next = [...prev]
+																		next[i] = ''
+																		return next
+																	})
+																} else if (pinRefs.current[i-1]) {
+																	pinRefs.current[i-1].focus()
+																	setPinDigits(prev => {
+																		const next = [...prev]
+																		next[i-1] = ''
+																		return next
+																	})
+																}
+															} else if (e.key === 'ArrowLeft' && pinRefs.current[i-1]) {
+																pinRefs.current[i-1].focus()
+															} else if (e.key === 'ArrowRight' && pinRefs.current[i+1]) {
+																pinRefs.current[i+1].focus()
+															}
+														}}
+														className="w-12 h-12 text-center text-lg rounded-md border border-border bg-input"
+														aria-label={`PIN digit ${i+1}`}
+													/>
+												))}
+											</div>
+											{!hasSavedPin ? (
+												<label className="inline-flex items-center gap-2 text-sm text-muted-foreground">
+													<input type="checkbox" checked={setPinForFuture} onChange={(e) => setSetPinForFuture(e.target.checked)} className="w-4 h-4 rounded border border-input bg-background" />
+													<span>Save this PIN for future Google sign-ins</span>
+												</label>
+											) : null}
+											<div className="flex items-center justify-end gap-2">
+												<button type="button" className="px-3 py-2 border border-border rounded-md" onClick={() => { setShowPinModal(false); setGoogleCredential(null); setPinDigits(['', '', '', '']) }}>Cancel</button>
+												<button type="submit" className="px-3 py-2 rounded-md bg-primary text-primary-foreground" disabled={googleLoading || pinDigits.some(d => d === '')}>{googleLoading ? 'Signing in…' : 'Continue'}</button>
+											</div>
+										</form>
+									</div>
+								</div>
+							)}
 							</Card>
 						</div>
 					</div>
