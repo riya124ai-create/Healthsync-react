@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 
 type ButtonOptions = {
   theme?: "outline" | "filled_black" | "filled_blue";
