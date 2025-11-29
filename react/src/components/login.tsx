@@ -44,7 +44,7 @@ export function Login() {
 				if (!root) return
 				const btn = root.querySelector('button') as HTMLButtonElement | null
 				if (btn) {
-					btn.style.width = '100%'
+					btn.style.setProperty('width', '100%', 'important')
 					btn.style.display = 'flex'
 					btn.style.justifyContent = 'center'
 					btn.setAttribute('type', 'button')
@@ -52,6 +52,21 @@ export function Login() {
 				}
 			} catch (err) {
 				console.debug('setRenderedButtonFullWidth failed', err)
+			}
+		}
+
+		// Watch for the SDK to insert its markup (production timing can vary).
+		let observer: MutationObserver | null = null
+		function observeAndEnsureFullWidth() {
+			setRenderedButtonFullWidth()
+			try {
+				const root = googleButtonRef.current
+				if (!root) return
+				if (observer) observer.disconnect()
+				observer = new MutationObserver(() => setRenderedButtonFullWidth())
+				observer.observe(root, { childList: true, subtree: true })
+			} catch (err) {
+				console.debug('observeAndEnsureFullWidth failed', err)
 			}
 		}
 		function handleCredentialResponse(response: any) {
@@ -89,7 +104,7 @@ export function Login() {
 					;(window as any).google.accounts.id.initialize({ client_id: clientId, callback: handleCredentialResponse })
 					if (googleButtonRef.current) {
 						;(window as any).google.accounts.id.renderButton(googleButtonRef.current, { theme: 'outline', size: 'large' })
-						setTimeout(setRenderedButtonFullWidth, 50)
+						observeAndEnsureFullWidth()
 					}
 				} catch (err) {
 					console.debug('google init failed', err)
@@ -101,9 +116,16 @@ export function Login() {
 				;(window as any).google.accounts.id.initialize({ client_id: clientId, callback: handleCredentialResponse })
 				if (googleButtonRef.current) {
 					;(window as any).google.accounts.id.renderButton(googleButtonRef.current, { theme: 'outline', size: 'large' })
-					setTimeout(setRenderedButtonFullWidth, 50)
+					observeAndEnsureFullWidth()
 				}
 			} catch (err) { console.debug('google render failed', err) }
+		}
+
+		// cleanup observer when the effect is torn down
+		return () => {
+			try {
+				if (observer) observer.disconnect()
+			} catch (e) {}
 		}
 	}, [auth])
 
