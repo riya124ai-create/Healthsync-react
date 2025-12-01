@@ -1,7 +1,7 @@
 "use client"
-import { Activity, Users, CheckCircle2, Pill, Plus } from "lucide-react"
+import { Plus } from "lucide-react"
 import { Card } from "@/components/ui/card"
-import StatCard from "./stat-card"
+// import StatCard from "./stat-card"
 import RecentPatients from "./recent-patients"
 import IntegrationStatus from "./integration-status"
 import OrgDoctorsPanel from "./OrgDoctorsPanel"
@@ -110,20 +110,14 @@ export default function EMRDashboard() {
                   </div>
                 </div>
               ))}
-            <div className="flex items-center">
+            {/* <div className="flex items-center">
               <button className="px-4 py-2 rounded-md border border-border bg-card" onClick={() => { setShowAllPatients(true); window.setTimeout(() => { const el = document.getElementById('org-patients-table'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }) }, 100) }}>See all patients</button>
-            </div>
+            </div> */}
           </div>
           <h1 className="text-3xl font-bold text-foreground">EMR Dashboard</h1>
           <p className="text-muted-foreground mt-1">Electronic Medical Records with Traditional Medicine Integration</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard label="Total Patients" value="2,847" change="+12.5%" icon={Users} trend="up" />
-          <StatCard label="ICD-11 TM2 Records" value="1,234" change="+8.2%" icon={Pill} trend="up" />
-          <StatCard label="NAMASTE Codes" value="856" change="+5.1%" icon={CheckCircle2} trend="up" />
-          <StatCard label="EHR Compliance" value="99.8%" change="Compliant" icon={Activity} trend="stable" />
-        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
@@ -132,36 +126,17 @@ export default function EMRDashboard() {
           </div>
 
           <div className="space-y-6">
-            <Card className="bg-card border-border p-6">
-              <h3 className="text-lg font-semibold text-foreground mb-4">System Status</h3>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Database</span>
-                  <span className="w-2 h-2 rounded-full bg-green-500"></span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">API Server</span>
-                  <span className="w-2 h-2 rounded-full bg-green-500"></span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Authentication</span>
-                  <span className="w-2 h-2 rounded-full bg-green-500"></span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">ICD-11 Service</span>
-                  <span className="w-2 h-2 rounded-full bg-yellow-500"></span>
-                </div>
-              </div>
-            </Card>
 
             <Card className="bg-card border-border p-6">
               <h3 className="text-lg font-semibold text-foreground mb-4">Quick Actions</h3>
               <div className="space-y-2">
-                <Button className="w-full px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors" onClick={() => setOpen(true)}>
-                  New Patient Record
+                <Button className="w-full px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors flex items-center justify-center" onClick={() => setOpen(true)}>
+                  <Plus className="h-4 w-4" />
+                  <span className="hidden sm:inline ml-2">New Patient Record</span>
                 </Button>
-                <Button className="w-full px-4 py-2 rounded-lg bg-accent text-accent-foreground text-sm font-medium hover:bg-accent/90 transition-colors" onClick={() => setAddDiagOpen(true)}>
-                  Add Diagnosis
+                <Button className="w-full px-4 py-2 rounded-lg bg-accent text-accent-foreground text-sm font-medium hover:bg-accent/90 transition-colors flex items-center justify-center" onClick={() => setAddDiagOpen(true)}>
+                  <Plus className="h-4 w-4" />
+                  <span className="hidden sm:inline ml-2">Add Diagnosis</span>
                 </Button>
                 <AddDiagnosisModal open={addDiagOpen} onClose={() => setAddDiagOpen(false)} onAdded={() => setAddDiagOpen(false)} onRequestNewPatient={() => { setAddDiagOpen(false); setOpen(true); }} />
                 <button className="w-full px-4 py-2 rounded-lg border border-border text-foreground text-sm font-medium hover:bg-card transition-colors" onClick={() => setViewReports(true)}>

@@ -30,6 +30,8 @@ export default function EditPatientModal({ open, onClose, patient, onSaved, onRe
     setName(patient.name || "")
     setAge(patient.age ?? "")
     setIcd11(patient.icd11 || null)
+    // default disease: prefer the most recent diagnosis if available,
+    // otherwise fall back to stored patient.disease
     setDisease(patient.disease || null)
     setQuery(patient.disease || "")
   }, [patient])
@@ -109,6 +111,38 @@ export default function EditPatientModal({ open, onClose, patient, onSaved, onRe
       clearTimeout(timer)
     }
   }, [query])
+
+  // When opening the modal, attempt to fetch the patient's diagnoses
+  // and prefer the most recent diagnosis as the default disease value.
+  useEffect(() => {
+    let cancelled = false
+    if (!patient) return
+    ;(async () => {
+      try {
+        const res = await authFetch('/api/patients/diagnoses')
+        if (!res.ok) return
+        const body = await res.json()
+        const list: Array<any> = Array.isArray(body.diagnoses) ? body.diagnoses : body.diagnoses || []
+        const matches = list.filter(d => String(d.patientId) === String(patient.id))
+        if (matches.length === 0) return
+        matches.sort((a, b) => {
+          const ta = a && a.createdAt ? Date.parse(a.createdAt) : 0
+          const tb = b && b.createdAt ? Date.parse(b.createdAt) : 0
+          return tb - ta
+        })
+        const latest = matches[0]
+        if (cancelled) return
+        if (latest && latest.disease) {
+          setDisease(latest.disease)
+          setQuery(latest.disease)
+        }
+      } catch (err) {
+        // ignore errors — keep existing patient.disease
+      }
+    })()
+
+    return () => { cancelled = true }
+  }, [patient, authFetch])
 
   if (!open || !patient) return null
 

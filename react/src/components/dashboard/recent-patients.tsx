@@ -2,9 +2,10 @@
 import { useEffect, useMemo, useState, useCallback } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { MoreVertical, RefreshCw } from "lucide-react"
+import { MoreVertical, RefreshCw, Plus } from "lucide-react"
 import EditPatientModal from "./EditPatientModal"
 import ConfirmDeleteModal from "./ConfirmDeleteModal"
+import NewPatientModal from "./NewPatientModal"
 import { useAuth } from "@/lib/auth"
 
 type Patient = {
@@ -59,6 +60,7 @@ export default function RecentPatients() {
   const [loading, setLoading] = useState(false)
   const [editing, setEditing] = useState<Patient | null>(null)
   const [deleting, setDeleting] = useState<Patient | null>(null)
+  const [newPatientOpen, setNewPatientOpen] = useState(false)
 
   // load patients (can be triggered by refresh)
   const loadPatients = useCallback(async (signal?: AbortSignal) => {
@@ -140,10 +142,14 @@ export default function RecentPatients() {
   return (
     <Card className="bg-card border-border p-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold text-foreground">Recent Patients</h2>
+        <h2 className="text-xl font-bold text-foreground leading-tight">Recent Patients</h2>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => loadPatients()} disabled={loading} aria-label="Refresh patients">
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          </Button>
+          <Button size="sm" onClick={() => setNewPatientOpen(true)} className="flex items-center gap-2">
+            <Plus className="h-4 w-4" />
+            <span className="hidden sm:inline">New patient</span>
           </Button>
           
         </div>
@@ -209,6 +215,7 @@ export default function RecentPatients() {
         ))}
         <EditPatientModal open={!!editing} onClose={() => setEditing(null)} patient={editing} onSaved={() => { setEditing(null); loadPatients() }} onRequestDelete={(p) => { setEditing(null); setDeleting(p) }} />
         <ConfirmDeleteModal open={!!deleting} onClose={() => setDeleting(null)} patient={deleting} onDeleted={() => { setDeleting(null); loadPatients() }} />
+        <NewPatientModal open={newPatientOpen} onClose={() => setNewPatientOpen(false)} onCreated={() => { setNewPatientOpen(false); loadPatients() }} />
       </div>
     </Card>
   )

@@ -7,10 +7,12 @@ import { useAuth } from "@/lib/auth"
 
 type Patient = { id: string; name?: string; createdBy?: string }
 
-export default function AddDiagnosisModal({ open, onClose, onAdded, onRequestNewPatient }: { open: boolean; onClose: () => void; onAdded?: () => void; onRequestNewPatient?: () => void }) {
+export default function AddDiagnosisModal({ open, onClose, onAdded }: { open: boolean; onClose: () => void; onAdded?: () => void; onRequestNewPatient?: () => void }) {
   const { authFetch, user } = useAuth()
   const [patients, setPatients] = useState<Patient[]>([])
   const [selected, setSelected] = useState<string | null>(null)
+  const [newName, setNewName] = useState<string>("")
+  const [newAge, setNewAge] = useState<number | "">("")
   
   const [query, setQuery] = useState("")
   const [icd11, setIcd11] = useState<string | null>(null)
@@ -57,6 +59,8 @@ export default function AddDiagnosisModal({ open, onClose, onAdded, onRequestNew
     setSelected(null)
     setError(null)
     setNotes("")
+    setNewName("")
+    setNewAge("")
   }, [open])
 
   function resetForm() {
@@ -67,6 +71,8 @@ export default function AddDiagnosisModal({ open, onClose, onAdded, onRequestNew
     setNotes("")
     setSuggestions([])
     setError(null)
+    setNewName("")
+    setNewAge("")
   }
 
   // debounce ICD search (NLM)
@@ -147,10 +153,36 @@ export default function AddDiagnosisModal({ open, onClose, onAdded, onRequestNew
     if (!notes || notes.trim() === '') { setError('Notes (text diagnosis) are required'); return }
     setSaving(true)
     try {
+      let targetPatientId = selected
+
+      // If creating a new patient inline, first create the patient using provided name/age and the diagnosis icd11
+      if (selected === '__new__') {
+        if (!newName || String(newAge) === '') {
+          setError('New patient name and age are required')
+          setSaving(false)
+          return
+        }
+        if (!icd11) {
+          setError('ICD-11 code is required to create a new patient')
+          setSaving(false)
+          return
+        }
+        const patientPayload = { name: newName, age: Number(newAge), icd11: icd11, ...(disease ? { disease } : {}) }
+        const pres = await authFetch('/api/patients', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patientPayload) })
+        if (!pres.ok) {
+          const txt = await pres.text().catch(() => '')
+          throw new Error(txt || 'failed to create patient')
+        }
+        const pdata = await pres.json()
+        targetPatientId = pdata.id || pdata._id || null
+        if (!targetPatientId) throw new Error('failed to determine created patient id')
+      }
+
       const payload = { icd11: icd11, disease, notes }
-      const res = await authFetch(`/api/patients/${selected}/diagnoses`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+      const res = await authFetch(`/api/patients/${targetPatientId}/diagnoses`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
       if (!res.ok) throw new Error('failed to add diagnosis')
       onAdded?.()
+      resetForm()
       onClose()
     } catch (err) {
       console.error('add diagnosis error', err)
@@ -171,8 +203,10 @@ export default function AddDiagnosisModal({ open, onClose, onAdded, onRequestNew
             <select value={selected ?? ''} onChange={e => {
               const value = e.target.value
               if (value === '__new__') {
-                resetForm()
-                onRequestNewPatient?.()
+                // switch form into inline "create new patient" mode
+                setSelected('__new__')
+                setNewName("")
+                setNewAge("")
                 return
               }
               setSelected(value || null)
@@ -185,6 +219,19 @@ export default function AddDiagnosisModal({ open, onClose, onAdded, onRequestNew
             </select>
             {loadingPatients && <div className="text-xs text-muted-foreground mt-1">Loading patients…</div>}
           </div>
+
+              {selected === '__new__' && (
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-sm text-muted-foreground mb-1">New patient name</label>
+                    <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Patient name" />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-muted-foreground mb-1">New patient age</label>
+                    <Input value={String(newAge)} onChange={e => setNewAge(e.target.value ? Number(e.target.value) : "")} type="number" placeholder="Age" />
+                  </div>
+                </div>
+              )}
 
           
 
