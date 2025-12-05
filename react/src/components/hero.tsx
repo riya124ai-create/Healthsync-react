@@ -6,6 +6,7 @@ import { motion } from "framer-motion"
 
 import { useRef, useState, useEffect } from "react"
 import { Card } from "./ui/card"
+import DarkVeil from "./reactBit"
 
 const features = [
   {
@@ -42,15 +43,10 @@ export function Hero() {
 
   const [selected, setSelected] = useState<any | null>(null)
   const [saved, setSaved] = useState<Array<any>>([])
-  const [fhirPreview, setFhirPreview] = useState<string | null>(null)
+  const [highlightedIndex, setHighlightedIndex] = useState<number>(-1)
+  const [showList, setShowList] = useState(false)
   const [sending, setSending] = useState(false)
   const [sendLog, setSendLog] = useState<string | null>(null)
-  const [toast, setToast] = useState<string | null>(null)
-
-  function showToast(message: string, ms = 3000) {
-    setToast(message)
-    setTimeout(() => setToast(null), ms)
-  }
 
   // Detect mobile screens
   useEffect(() => {
@@ -118,6 +114,38 @@ export function Hero() {
       })
     : diseaseCatalog
 
+  useEffect(() => {
+    // reset highlighted index when filtered results change
+    setHighlightedIndex(filtered.length > 0 ? 0 : -1)
+    setShowList(filtered.length > 0 && query.trim() !== '')
+  }, [filtered.length])
+
+  const listboxId = 'icd-listbox'
+
+  const onInputKeyDown = (e: any) => {
+    if (filtered.length === 0) return
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setHighlightedIndex((i) => Math.min(i + 1, filtered.length - 1))
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setHighlightedIndex((i) => Math.max(i - 1, 0))
+    } else if (e.key === 'Enter') {
+      e.preventDefault()
+      if (highlightedIndex >= 0 && highlightedIndex < filtered.length) {
+        const sel = filtered[highlightedIndex]
+        setSelected(sel)
+        setShowList(false)
+        setHighlightedIndex(-1)
+        setQuery('')
+      }
+    } else if (e.key === 'Escape') {
+      e.preventDefault()
+      setHighlightedIndex(-1)
+      setShowList(false)
+    }
+  }
+
   function convertToFHIR(diagnosis: any) {
     const fhir = {
       resourceType: 'Condition',
@@ -144,22 +172,17 @@ export function Hero() {
     })
   }
 
-  function handlePreview() {
-    if (!selected) return
-    const fhir = convertToFHIR(selected)
-    setFhirPreview(JSON.stringify(fhir, null, 2))
-  }
-
   async function handleMockSend() {
-    if (!fhirPreview) return
+    if (!selected) return
     setSending(true)
     setSendLog(null)
 
     await new Promise((r) => setTimeout(r, 700))
     setSending(false)
-    setSendLog('FHIR payload successfully sent to mock EMR (simulated).')
-    // Inform the user they need to log in to save real patient records
-    showToast('Log in to save patient records to EMR')
+    setSendLog('Navigating to ICD-11 dashboard...')
+    
+    // Navigate to dashboard/icd11 page
+    window.location.href = '/dashboard/icd11'
   }
 
 
@@ -169,172 +192,337 @@ export function Hero() {
   // For brevity, I keep animation code unchanged — insert your previous code here
 
   return (
-    <div ref={containerRef} className="overflow-hidden">
-      {/* Toast - simple inline implementation for quick user feedback */}
-      {toast && (
-        <div className="fixed bottom-6 right-6 z-50">
-          <div className="bg-primary text-primary-foreground px-4 py-2 rounded shadow-lg">{toast}</div>
-        </div>
-      )}
-      {/* Animated shadow CSS omitted for brevity; keep unchanged */}
+    <div ref={containerRef} className="overflow-hidden relative">
 
-      <section className="relative py-12 md:py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 gap-8 md:gap-12 items-center">
-            <motion.div
-              className="space-y-6 md:space-y-8"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6 }}
+      {/* Hero Section with Split Layout and Interactive Elements */}
+      <section className="relative py-8 md:py-12 lg:py-16">
+        {/* Background Pattern */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_80%,rgba(14,165,233,0.05),transparent_50%),radial-gradient(circle_at_70%_20%,rgba(16,185,129,0.05),transparent_50%)] dark:bg-[radial-gradient(circle_at_30%_80%,rgba(14,165,233,0.1),transparent_50%),radial-gradient(circle_at_70%_20%,rgba(16,185,129,0.1),transparent_50%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(14,165,233,0.01)_1px,transparent_1px),linear-gradient(rgba(14,165,233,0.01)_1px,transparent_1px)] bg-[size:4rem_4rem] dark:bg-[linear-gradient(90deg,rgba(14,165,233,0.03)_1px,transparent_1px),linear-gradient(rgba(14,165,233,0.03)_1px,transparent_1px)]" />
+
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center py-8 md:py-12">
+            
+            {/* Left Column - Brand & Navigation */}
+            <motion.div 
+              className="lg:col-span-5 space-y-8"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, ease: "easeOut" }}
             >
-              <div className="space-y-4">
-                <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground leading-tight">
-                  HealthSync
-                </h1>
-                <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
-                  Search ICD-11 terms, save a diagnosis for a sample patient, and preview a FHIR-compatible record.
-                </p>
+              <div className="space-y-6">
+                {/* Brand Header */}
+                <div className="space-y-3">
+                  
+                  <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold leading-tight">
+                    <motion.span 
+                      className="mb-2"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.6, delay: 0.3 }}
+                    >
+                      <span className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 dark:from-white dark:via-slate-100 dark:to-white bg-clip-text text-transparent">
+                        Health
+                      </span>
+                    </motion.span>
+                    <motion.span 
+                      className="bg-gradient-to-r from-sky-400 via-cyan-400 to-emerald-400 bg-clip-text text-transparent"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.6, delay: 0.4 }}
+                    >
+                      Sync
+                    </motion.span>
+                  </h1>
+                </div>
 
-                {/* EMR interaction */}
-                <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 items-start">
-                  <div className="col-span-1">
-                    <label className="sr-only">Search diagnoses</label>
-                    <div className="relative">
-                      <input
-                        aria-label="Search diagnoses"
-                        type="search"
-                        value={query}
-                        onChange={(e) => setQuery(e.target.value)}
-                        placeholder="Search ICD-11 or free text..."
-                        className="w-full pl-10 pr-3 h-9 rounded-md border border-border bg-input text-sm"
-                      />
-                      <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                        <Search className="w-4 h-4" />
+                {/* Value Proposition */}
+                <motion.div 
+                  className="space-y-4"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: 0.5 }}
+                >
+                  <p className="text-xl font-medium text-foreground/80 dark:text-foreground/90">
+                    Clinical intelligence meets seamless workflow
+                  </p>
+                  <p className="text-lg text-foreground/60 dark:text-foreground/70 max-w-lg leading-relaxed">
+                    Transform patient care with our ICD-11 integrated EMR. Real-time FHIR compliance, intelligent diagnostics, and secure team collaboration in one unified platform.
+                  </p>
+                </motion.div>
+
+
+                {/* Call to Action */}
+                <motion.div 
+                  className="flex flex-col sm:flex-row gap-4 items-start"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: 0.7 }}
+                >
+                  <Button 
+                    size="lg" 
+                    className="bg-gradient-to-r from-sky-500 to-emerald-500 hover:from-sky-600 hover:to-emerald-600 text-white px-8 py-6 text-lg shadow-xl shadow-sky-500/25 hover:shadow-sky-500/40 transition-all duration-300"
+                    onClick={() => window.location.href = '/dashboard'}
+                  >
+                    Go to Dashboard
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="lg" 
+                    className="border-2 border-foreground/20 dark:border-foreground/30 px-8 py-6 text-lg hover:bg-foreground/5 dark:hover:bg-foreground/10"
+                    onClick={() => window.location.href = '/about'}
+                  >
+                    Read about us
+                  </Button>
+                </motion.div>
+
+                {/* Saved Diagnoses Preview */}
+                <motion.div 
+                  className="space-y-3"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: 0.8 }}
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="w-1 h-1 rounded-full bg-emerald-500"></div>
+                    <span className="text-sm font-medium text-foreground/70 dark:text-foreground/80">Recent Diagnoses</span>
+                  </div>
+                  <div className="space-y-2 max-h-32 overflow-y-auto">
+                    {saved.length === 0 ? (
+                      <p className="text-sm text-foreground/50 dark:text-foreground/60 italic">Try the search to save diagnoses</p>
+                    ) : (
+                      saved.slice(0, 3).map((s, idx) => (
+                        <motion.div 
+                          key={s.id} 
+                          className="p-3 rounded-lg bg-gradient-to-r from-sky-50/50 to-emerald-50/50 dark:from-sky-950/20 dark:to-emerald-950/20 border border-sky-200/30 dark:border-sky-800/30 backdrop-blur-sm"
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ duration: 0.3, delay: idx * 0.1 }}
+                          whileHover={{ scale: 1.02 }}
+                        >
+                          <div className="text-sm font-medium text-foreground/90 dark:text-foreground">{s.title}</div>
+                          <div className="text-xs text-foreground/60 dark:text-foreground/70">ICD-11: {s.icd}</div>
+                        </motion.div>
+                      ))
+                    )}
+                  </div>
+                  {sendLog && (
+                    <motion.p 
+                      className="text-sm text-emerald-600 dark:text-emerald-400 font-medium"
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                    >
+                      ✓ {sendLog}
+                    </motion.p>
+                  )}
+                </motion.div>
+              </div>
+            </motion.div>
+
+            {/* Right Column - Interactive ICD Search Terminal */}
+            <motion.div 
+              className="lg:col-span-7"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.8, delay: 0.3 }}
+            >
+              <div className="relative">
+                {/* Terminal Window */}
+                <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 rounded-2xl shadow-2xl border border-slate-700/50 dark:border-slate-800/50 overflow-hidden">
+                  {/* Terminal Header */}
+                  <div className="flex items-center justify-between px-6 py-4 bg-slate-800/50 dark:bg-slate-900/50 border-b border-slate-700/50 dark:border-slate-800/50">
+                    <div className="flex items-center gap-2">
+                      <div className="flex gap-1.5">
+                        <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                        <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+                        <div className="w-3 h-3 rounded-full bg-green-500"></div>
                       </div>
+                      <span className="text-sm font-mono text-slate-400 ml-4">ICD-11 Clinical Terminal</span>
                     </div>
-
-                    <p className="text-xs text-muted-foreground mt-2">Try: "heart", "diabetes", or ICD codes like "6A00".</p>
-
-                    <div className="mt-2 max-h-44 overflow-auto">
-                      {loading && <p className="text-xs text-muted-foreground">Loading...</p>}
-                      {error && <p className="text-xs text-red-600">Error: {error}</p>}
-                      {!loading && filtered.length === 0 && <p className="text-xs text-muted-foreground">No results</p>}
-                      {!loading && filtered.length > 0 && (
-                        <ul className="space-y-2">
-                          {filtered.map((d) => (
-                            <li key={d.id}>
-                              <button
-                                onClick={() => setSelected(d)}
-                                className={`w-full text-left p-2 rounded-md hover:bg-accent/5 transition ${selected?.id === d.id ? 'bg-accent/10' : ''}`}
-                              >
-                                <div className="flex items-center justify-between">
-                                  <div>
-                                    <div className="text-sm font-medium text-foreground">{d.title}</div>
-                                    <div className="text-xs text-muted-foreground">ICD: {d.icd}</div>
-                                  </div>
-                                  <div className="text-xs text-muted-foreground">View</div>
-                                </div>
-                              </button>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
+                    <div className="text-xs text-slate-500 dark:text-slate-400 font-mono">
+                      HealthSync v2024.1
                     </div>
                   </div>
 
-                  <div className="col-span-1">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium text-foreground">Selected diagnosis</p>
-                      <p className="text-xs text-muted-foreground">Sample Patient</p>
+                  {/* Terminal Content */}
+                  <div className="p-6 space-y-6">
+                    {/* Search Interface */}
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2 text-emerald-400 font-mono text-sm">
+                        <span>healthcare@terminal:~$</span>
+                        <span className="text-slate-400">search-icd11</span>
+                      </div>
+                      
+                      <div className="relative">
+                        <input
+                          aria-label="Search ICD-11 diagnoses"
+                          role="combobox"
+                          aria-controls={listboxId}
+                          aria-expanded={filtered.length > 0}
+                          aria-autocomplete="list"
+                          aria-activedescendant={highlightedIndex >= 0 && filtered[highlightedIndex] ? `icd-option-${highlightedIndex}` : undefined}
+                          type="search"
+                          value={query}
+                          onChange={(e) => setQuery(e.target.value)}
+                          onKeyDown={onInputKeyDown}
+                          placeholder="Enter diagnosis or ICD code..."
+                          className="w-full bg-slate-800/50 dark:bg-slate-900/50 border border-slate-600/50 dark:border-slate-700/50 rounded-lg px-4 py-3 text-slate-100 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 focus:border-emerald-400/50 focus:ring-2 focus:ring-emerald-400/25 transition-all font-mono"
+                        />
+                        {query && (
+                          <motion.div 
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-400"
+                            animate={{ rotate: loading ? 360 : 0 }}
+                            transition={{ duration: 1, repeat: loading ? Infinity : 0 }}
+                          >
+                            <Search className="w-4 h-4" />
+                          </motion.div>
+                        )}
+                      </div>
+
+                      {/* Search Results */}
+                      {filtered.length > 0 && (
+                        <motion.div 
+                          className="space-y-2 max-h-64 overflow-y-auto"
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          exit={{ opacity: 0, height: 0 }}
+                        >
+                          <div className="text-xs text-slate-400 font-mono mb-2">
+                            Found {filtered.length} matches:
+                          </div>
+                          {filtered.slice(0, 5).map((d, idx) => (
+                            <motion.button
+                              key={d.id}
+                              onClick={() => {
+                                setSelected(d)
+                                setShowList(false)
+                                setHighlightedIndex(-1)
+                                setQuery('')
+                              }}
+                              className={`w-full text-left p-3 rounded-lg transition-all ${
+                                highlightedIndex === idx 
+                                  ? 'bg-emerald-400/10 border-emerald-400/30' 
+                                  : 'bg-slate-800/30 dark:bg-slate-900/30 hover:bg-slate-700/30 dark:hover:bg-slate-800/30'
+                              } border border-slate-600/30 dark:border-slate-700/30`}
+                              onMouseEnter={() => setHighlightedIndex(idx)}
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ duration: 0.2, delay: idx * 0.05 }}
+                              whileHover={{ scale: 1.02 }}
+                            >
+                              <div className="text-sm font-medium text-slate-100 dark:text-slate-200">{d.title}</div>
+                              <div className="text-xs text-emerald-400 font-mono mt-1">ICD-11: {d.icd}</div>
+                            </motion.button>
+                          ))}
+                        </motion.div>
+                      )}
+
+                      {loading && (
+                        <div className="flex items-center gap-2 text-slate-400 text-sm font-mono">
+                          <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div>
+                          Searching ICD-11 database...
+                        </div>
+                      )}
+
+                      {error && (
+                        <div className="text-red-400 text-sm font-mono bg-red-950/20 border border-red-800/30 rounded-lg p-3">
+                          Error: {error}
+                        </div>
+                      )}
                     </div>
-                    <div className="mt-2 p-3 rounded-md bg-card border border-border min-h-[72px]">
+
+                    {/* Selected Diagnosis Display */}
+                    <div className="bg-slate-800/30 dark:bg-slate-900/30 rounded-lg p-4 border border-slate-600/30 dark:border-slate-700/30">
+                      <div className="text-xs text-slate-400 font-mono mb-2">SELECTED DIAGNOSIS:</div>
                       {selected ? (
-                        <div>
-                          <div className="text-sm font-semibold text-foreground">{selected.title}</div>
-                          <div className="text-xs text-muted-foreground">{selected.description}</div>
-                          <div className="text-xs text-muted-foreground">ICD-11: {selected.icd}</div>
+                        <div className="space-y-2">
+                          <div className="text-sm font-medium text-slate-100 dark:text-slate-200">{selected.title}</div>
+                          <div className="text-xs text-slate-400">{selected.description}</div>
+                          <div className="text-xs text-emerald-400 font-mono">ICD-11: {selected.icd}</div>
                         </div>
                       ) : (
-                        <p className="text-sm text-muted-foreground">No diagnosis selected</p>
+                        <div className="text-sm text-slate-400 italic">No diagnosis selected</div>
                       )}
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex flex-wrap gap-3">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={handleSave} 
+                        disabled={!selected}
+                        className="border-emerald-400/50 text-emerald-400 hover:bg-emerald-400/10"
+                      >
+                        Save
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        onClick={handleMockSend} 
+                        disabled={!selected || sending}
+                        className="bg-sky-400/20 text-sky-300 hover:bg-sky-400/30"
+                      >
+                        {sending ? 'Opening Dashboard...' : 'Send to EMR'}
+                      </Button>
                     </div>
                   </div>
                 </div>
 
-                <div className="mt-3 flex gap-3 flex-wrap">
-                  <Button variant="secondary" size="sm" onClick={handleSave} disabled={!selected}>
-                    Save diagnosis
-                  </Button>
-                  <Button size="sm" onClick={handlePreview} disabled={!selected}>
-                    Preview FHIR
-                  </Button>
-                  <Button size="sm" onClick={handleMockSend} disabled={!fhirPreview || sending}>
-                    {sending ? 'Sending…' : 'Send to EMR (mock)'}
-                  </Button>
-                </div>
-
-                <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm font-medium text-foreground">Saved diagnoses</p>
-                    <div className="mt-2 space-y-2">
-                      {saved.length === 0 ? (
-                        <p className="text-xs text-muted-foreground">None saved yet</p>
-                      ) : (
-                        saved.map((s) => (
-                          <div key={s.id} className="p-2 rounded border border-border bg-card text-sm">
-                            <div className="font-medium">{s.title}</div>
-                            <div className="text-xs text-muted-foreground">ICD: {s.icd}</div>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                    {sendLog && <p className="mt-2 text-xs text-success">{sendLog}</p>}
-                  </div>
-
-                  <div>
-                    <p className="text-sm font-medium text-foreground">FHIR preview</p>
-                    <div className="mt-2 p-2 rounded bg-black/5 max-h-48 overflow-auto text-xs font-mono">
-                      {fhirPreview ? (
-                        <pre className="whitespace-pre-wrap">{fhirPreview}</pre>
-                      ) : (
-                        <p className="text-xs text-muted-foreground">Preview a FHIR Condition by selecting a diagnosis and clicking Preview FHIR.</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
               </div>
             </motion.div>
           </div>
         </div>
       </section>
 
-      <section id="features" className="relative py-12 md:py-20 lg:py-32 bg-muted/30">
+      {/* Features Section with Modern Cards */}
+      <section id="features" className="relative py-20 lg:py-32">
+        <div className="absolute inset-0 bg-gradient-to-b from-muted/20 to-background"></div>
+        
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div 
+            className="text-center mb-16"
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+          >
+            <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-6">
+              Built for <span className="bg-gradient-to-r from-sky-400 to-emerald-400 bg-clip-text text-transparent">Healthcare</span> Excellence
+            </h2>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              Every feature designed with clinical workflows and patient outcomes in mind
+            </p>
+          </motion.div>
 
-          <div className="relative z-10">
-            <div className="text-center mb-12 md:mb-16">
-              <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-foreground mb-4 text-balance">
-                Why Choose HealthSync?
-              </h2>
-              <p className="text-base sm:text-lg text-muted-foreground max-w-2xl mx-auto text-balance px-4">
-                We design every feature for secure, interoperable clinical workflows and improved patient outcomes.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 px-4 sm:px-0">
-              {features.map((feature, index) => {
-                const Icon = feature.icon
-                return (
-                  <Card key={index} className="p-6 sm:p-8 bg-card hover:shadow-lg transition-shadow border-border" style={{ boxShadow: 'var(--card-shadow, 0 18px 48px rgba(2,6,23,0.12))' }}>
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-3 sm:mb-4">
-                      <Icon className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {features.map((feature, index) => {
+              const Icon = feature.icon
+              return (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.6, delay: index * 0.1 }}
+                  whileHover={{ y: -5, scale: 1.02 }}
+                  className="group"
+                >
+                  <Card className="p-8 bg-gradient-to-br from-card/80 via-card to-card/80 hover:shadow-2xl transition-all duration-500 border border-border/60 backdrop-blur-sm h-full">
+                    <div className="space-y-4">
+                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-r from-sky-400/10 via-emerald-400/10 to-cyan-400/10 border border-sky-200/20 dark:border-sky-800/20 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                        <Icon className="w-6 h-6 text-sky-500 dark:text-sky-400" />
+                      </div>
+                      <h3 className="text-xl font-semibold text-foreground group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors">
+                        {feature.title}
+                      </h3>
+                      <p className="text-muted-foreground leading-relaxed">
+                        {feature.description}
+                      </p>
                     </div>
-                    <h3 className="text-lg sm:text-xl font-semibold text-foreground mb-2">{feature.title}</h3>
-                    <p className="text-muted-foreground leading-relaxed text-sm sm:text-base">{feature.description}</p>
                   </Card>
-                )
-              })}
-            </div>
+                </motion.div>
+              )
+            })}
           </div>
         </div>
       </section>

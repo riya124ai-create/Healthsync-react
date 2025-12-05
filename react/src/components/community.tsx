@@ -38,32 +38,34 @@ export function Community() {
   }
 
   const itemVariants = {
-    hidden: { opacity: 0, scale: 0.9 },
+    hidden: { opacity: 0, y: 20, scale: 0.95 },
     visible: {
       opacity: 1,
+      y: 0,
       scale: 1,
-      transition: { duration: 0.6 },
+      transition: { duration: 0.6, ease: "easeOut" },
     },
   }
 
   return (
-    <section id="community" className="py-20 md:py-32">
+    <section id="community" className="relative py-20 md:py-32 bg-gradient-to-b from-background via-muted/30 to-background">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div
           className="text-center mb-16"
           initial={{ opacity: 0, y: -30 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          viewport={{ once: true }}
         >
-          <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-4 text-balance">Trusted by Care Teams</h2>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto text-balance">
-            Hear from clinics and hospitals using HealthSync EMR to improve care coordination and outcomes.
+          <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-6 text-balance">
+            <span className="bg-clip-text text-transparent bg-gradient-to-r from-emerald-500 via-cyan-400 to-sky-400">Trusted by Care Teams</span>
+          </h2>
+          <p className="text-lg lg:text-xl text-muted-foreground/90 max-w-3xl mx-auto text-balance leading-relaxed">
+            Hear from clinics and hospitals using HealthSync EMR to improve care coordination and patient outcomes.
           </p>
         </motion.div>
 
         <motion.div
-          className="grid md:grid-cols-3 gap-8"
+          className="grid md:grid-cols-3 gap-6 lg:gap-8"
           variants={containerVariants}
           initial="hidden"
           whileInView="visible"
@@ -71,16 +73,16 @@ export function Community() {
         >
           {testimonials.map((testimonial, index) => (
             <motion.div key={index} variants={itemVariants}>
-              <Card className="p-8 bg-card border-border hover:shadow-lg transition-shadow">
-                <div className="flex gap-1 mb-4">
+              <Card className="p-8 lg:p-10 bg-card/98 backdrop-blur-sm border border-border/60 hover:border-border/80 hover:shadow-2xl hover:shadow-primary/8 transition-all duration-300 rounded-2xl group">
+                <div className="flex gap-1 mb-6">
                   {Array.from({ length: testimonial.rating }).map((_, i) => (
-                    <Star key={i} className="w-4 h-4 fill-primary text-primary" />
+                    <Star key={i} className="w-5 h-5 fill-emerald-400 text-emerald-400 group-hover:scale-110 transition-transform duration-300" style={{animationDelay: `${i * 100}ms`}} />
                   ))}
                 </div>
-                <p className="text-muted-foreground mb-6 leading-relaxed">"{testimonial.content}"</p>
-                <div>
-                  <p className="font-semibold text-foreground">{testimonial.name}</p>
-                  <p className="text-sm text-muted-foreground">{testimonial.role}</p>
+                <p className="text-muted-foreground/90 mb-8 leading-relaxed text-lg font-medium">"{testimonial.content}"</p>
+                <div className="border-t border-border/40 pt-6">
+                  <p className="font-bold text-foreground text-lg">{testimonial.name}</p>
+                  <p className="text-sm text-primary font-semibold">{testimonial.role}</p>
                 </div>
               </Card>
             </motion.div>

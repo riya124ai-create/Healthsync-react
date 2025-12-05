@@ -29,6 +29,29 @@ router.get('/', async (req, res) => {
   }
 })
 
+// GET /api/organizations/:id - return single organization
+router.get('/:id', async (req, res) => {
+  try {
+    const db = await getDb()
+    if (!db) return res.status(503).json({ error: 'database unavailable' })
+
+    const orgId = req.params.id
+    const org = await db.collection('organizations').findOne({ _id: new (require('mongodb').ObjectId)(orgId) })
+    if (!org) return res.status(404).json({ error: 'organization not found' })
+
+    return res.json({ 
+      id: String(org._id), 
+      name: org.name, 
+      slug: org.slug,
+      admin: org.admin,
+      createdAt: org.createdAt 
+    })
+  } catch (err) {
+    console.error('organization GET by ID error', err)
+    return res.status(500).json({ error: 'failed to load organization' })
+  }
+})
+
 module.exports = router
 
 // GET /api/organizations/:id/doctors - return doctors for an organization with their patients and diagnoses
@@ -76,7 +99,14 @@ router.get('/:id/doctors', async (req, res) => {
       doctors.push({ id: docId, email: docEmail, profile: d.profile || {}, patients: patientList, diagnoses })
     }
 
-    return res.json({ doctors })
+    return res.json({ 
+      organization: {
+        id: String(org._id),
+        name: org.name,
+        slug: org.slug
+      },
+      doctors 
+    })
   } catch (err) {
     console.error('org doctors error', err)
     return res.status(500).json({ error: 'failed to load doctors' })

@@ -44,16 +44,21 @@ export default function Sidebar({ open, onToggle }: SidebarProps) {
     <>
       {/* Desktop Sidebar */}
       <div
-        className={`hidden md:flex md:fixed md:top-0 md:left-0 md:h-screen flex-col bg-sidebar border-r border-sidebar-border z-40 w-64 transform ${
+        className={`hidden md:flex md:fixed md:top-0 md:left-0 md:h-screen flex-col bg-sidebar/95 backdrop-blur-xl border-r border-sidebar-border/50 z-40 w-64 transform ${
           open ? "translate-x-0" : "-translate-x-64"
-        } overflow-hidden transition-transform duration-300 ease-in-out will-change-transform`}
+        } overflow-hidden transition-all duration-300 ease-out will-change-transform shadow-2xl shadow-sidebar-border/10`}
       >
-        <div className="p-6 border-b border-sidebar-border">
-          <h1 className="text-xl font-bold text-sidebar-foreground">EMR System</h1>
-          <p className="text-xs text-sidebar-foreground/60 mt-1">Traditional Medicine Integrated</p>
+        <div className="p-6 border-b border-sidebar-border/50 bg-gradient-to-r from-sidebar to-sidebar/80">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary via-primary/90 to-primary/80 flex items-center justify-center shadow-lg">
+              <Stethoscope className="w-4 h-4 text-white" />
+            </div>
+            <h1 className="text-xl font-bold text-sidebar-foreground bg-gradient-to-r from-sidebar-foreground via-sidebar-foreground/90 to-sidebar-foreground/80 bg-clip-text">HealthSync</h1>
+          </div>
+          <p className="text-xs text-sidebar-foreground/70 font-medium tracking-wide">Clinical Management Platform</p>
         </div>
 
-    <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+    <nav className="flex-1 p-4 space-y-3 overflow-y-auto scrollbar-thin scrollbar-thumb-sidebar-border/30 scrollbar-track-transparent">
       {menuItems.map((item) => {
             const Icon = item.icon
             const isActive = pathname === item.href
@@ -62,13 +67,15 @@ export default function Sidebar({ open, onToggle }: SidebarProps) {
               <Link key={item.href} to={item.href}>
                 <Button
                   variant={isActive ? "default" : "ghost"}
-                  className={`w-full justify-start gap-3 ${
+                  className={`w-full justify-start gap-3 h-11 text-sm font-medium transition-all duration-200 group ${
                     isActive
-                      ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                      : "text-sidebar-foreground hover:bg-sidebar-accent/10"
+                      ? "bg-gradient-to-r from-sidebar-primary to-sidebar-primary/90 text-sidebar-primary-foreground shadow-lg shadow-sidebar-primary/20"
+                      : "text-sidebar-foreground/80 hover:text-sidebar-foreground hover:bg-sidebar-accent/10 hover:shadow-sm"
                   }`}
                 >
-                  <Icon className="w-5 h-5" />
+                  <Icon className={`w-5 h-5 transition-transform duration-200 ${
+                    isActive ? "" : "group-hover:scale-110"
+                  }`} />
                   <span>{item.label}</span>
                 </Button>
               </Link>
@@ -78,8 +85,14 @@ export default function Sidebar({ open, onToggle }: SidebarProps) {
             <Link key="/dashboard/reports" to="/dashboard/reports">
               <Button
                 variant={pathname === '/dashboard/reports' ? 'default' : 'ghost'}
-                className={`w-full justify-start gap-3 ${pathname === '/dashboard/reports' ? 'bg-sidebar-primary text-sidebar-primary-foreground' : 'text-sidebar-foreground hover:bg-sidebar-accent/10'}`}>
-                <BookOpen className="w-5 h-5" />
+                className={`w-full justify-start gap-3 h-11 text-sm font-medium transition-all duration-200 group ${
+                  pathname === '/dashboard/reports' 
+                    ? 'bg-gradient-to-r from-sidebar-primary to-sidebar-primary/90 text-sidebar-primary-foreground shadow-lg shadow-sidebar-primary/20' 
+                    : 'text-sidebar-foreground/80 hover:text-sidebar-foreground hover:bg-sidebar-accent/10 hover:shadow-sm'
+                }`}>
+                <BookOpen className={`w-5 h-5 transition-transform duration-200 ${
+                  pathname === '/dashboard/reports' ? "" : "group-hover:scale-110"
+                }`} />
                 <span>Reports</span>
               </Button>
             </Link>

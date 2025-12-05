@@ -1,11 +1,12 @@
 "use client"
 
 import { Link } from "react-router-dom"
-import { Menu, Search } from "lucide-react"
+import { Menu, Search, ChevronDown, User, Settings } from "lucide-react"
 import ThemeToggle from "@/components/theme-toggle"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useState, useEffect, useRef } from "react"
+import { useAuth } from "@/lib/auth"
 
 interface HeaderProps {
   onSidebarToggle: () => void
@@ -23,7 +24,78 @@ export default function Header({ onSidebarToggle }: HeaderProps) {
   const [searchResults, setSearchResults] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [showResults, setShowResults] = useState(false)
+  const [showUserMenu, setShowUserMenu] = useState(false)
+  const [organizationName, setOrganizationName] = useState<string | null>(null)
+  const [profileLoading, setProfileLoading] = useState(true)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const { user, authFetch } = useAuth()
+
+  const getUserInitials = (name?: string, email?: string, userRole?: string, adminName?: string) => {
+
+    if (userRole === 'organization' && adminName) {
+      const parts = adminName.split(/\s+/).filter(Boolean)
+      if (parts.length >= 2) {
+        return `${parts[0][0]?.toUpperCase() || 'A'}${parts[1][0]?.toUpperCase() || ''}`
+      }
+      return `${parts[0]?.[0]?.toUpperCase() || 'A'}${parts[0]?.[1]?.toUpperCase() || ''}`
+    }
+
+    if (!name || name.trim().length === 0) return (email && email[0]?.toUpperCase()) || 'D'
+
+    const titles = new Set(['dr', 'dr.', 'doctor'])
+    const parts = name.split(/\s+/).filter(Boolean).filter(p => !titles.has(p.toLowerCase()))
+    if (parts.length === 0) return (email && email[0]?.toUpperCase()) || 'D'
+    if (parts.length === 1) {
+      const first = parts[0][0]?.toUpperCase() || 'D'
+      return `D${first}`
+    }
+    const a = parts[0][0]?.toUpperCase() || 'D'
+    const b = parts[1][0]?.toUpperCase() || ''
+    return `${a}${b}`
+  }
+
+  useEffect(() => {
+    const fetchOrganizationName = async () => {
+      if (!user) {
+        setProfileLoading(false)
+        return
+      }
+
+      try {
+        setProfileLoading(true)
+        
+        if (user.role === 'organization') {
+          const orgName = (user.profile as any)?.organization
+          setOrganizationName(orgName || 'Unknown Organization')
+        }
+        else if (user.role === 'doctor') {
+          const orgId = (user.profile as any)?.organizationId
+          if (orgId) {
+            try {
+              const orgResponse = await authFetch(`/api/organizations/${orgId}`)
+              
+              if (orgResponse.ok) {
+                const orgData = await orgResponse.json()
+                setOrganizationName(orgData.name || 'Unknown Organization')
+              } else {
+                console.error('Failed to fetch organization:', orgResponse.status)
+                setOrganizationName('Unknown Organization')
+              }
+            } catch (orgError) {
+              console.error('Failed to fetch organization:', orgError)
+              setOrganizationName('Unknown Organization')
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch user data:', error)
+      } finally {
+        setProfileLoading(false)
+      }
+    }
+
+    fetchOrganizationName()
+  }, [user, authFetch])
 
   useEffect(() => {
     if (!query.trim()) {
@@ -33,7 +105,6 @@ export default function Header({ onSidebarToggle }: HeaderProps) {
     }
 
     setLoading(true)
-    // Filter local AYUSH/NAMASTE
     const filteredTraditional = traditionalCatalog.filter((d) => {
       const q = query.toLowerCase()
       return (d.title.toLowerCase().includes(q) || d.ayush.toLowerCase().includes(q) || d.icd.toLowerCase().includes(q))
@@ -48,26 +119,27 @@ export default function Header({ onSidebarToggle }: HeaderProps) {
         const codes = data[1]
         const titles = data[3].map((entry: string[]) => entry[1])
         const apiResults = codes.map((code: string, idx: number) => ({
-          id: code,
+          id: `icd-${code}`,
           icd: code,
           title: titles[idx],
-          description: '',
-          ayush: '',
-          ayushSystem: '',
+          description: 'ICD-11 official terminology',
           source: 'ICD-11'
         }))
-        setSearchResults([...filteredTraditional.map(x => ({ ...x, source: 'Traditional' })), ...apiResults])
-        setLoading(false)
-      } catch {
-        setSearchResults([...filteredTraditional.map(x => ({ ...x, source: 'Traditional' }))])
-        setLoading(false)
-      }
-    }, 300)
 
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current)
-    }
+        const combined = [...filteredTraditional.map(t => ({ ...t, source: 'Traditional' })), ...apiResults]
+        setSearchResults(combined)
+        setLoading(false)
+        setShowResults(true)
+      } catch (err) {
+        console.error('Search error:', err)
+        setSearchResults(filteredTraditional.map(t => ({ ...t, source: 'Traditional' })))
+        setLoading(false)
+        setShowResults(true)
+      }
+    }, 400)
   }, [query])
+
+
 
   return (
     <header className="h-16 border-b border-border bg-card flex items-center justify-between px-6">
@@ -124,18 +196,76 @@ export default function Header({ onSidebarToggle }: HeaderProps) {
 
       <div className="flex items-center gap-4">
         <ThemeToggle />
-  <Link to="/" className="flex items-center gap-3 shrink-0">
-          <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
-            <img src="/logo-white.png" alt="HealthSync" className="w-5 h-5" />
-          </div>
-          <span className="hidden sm:inline text-sm font-semibold text-foreground">HealthSync</span>
-        </Link>
-        <button
-          aria-label="Open user menu"
-          className="w-9 h-9 rounded-full bg-gradient-blue-purple flex items-center justify-center"
-        >
-          <span className="text-white text-sm font-semibold">DR</span>
-        </button>
+        
+        {/* User Menu Dropdown */}
+        <div className="relative">
+          <button
+            onClick={() => setShowUserMenu(!showUserMenu)}
+            onBlur={() => setTimeout(() => setShowUserMenu(false), 200)}
+            aria-label="Open user menu"
+            className="w-10 h-10 rounded-full bg-primary/20 hover:bg-primary/30 flex items-center justify-center text-primary font-semibold text-sm transition-all duration-200"
+          >
+            <span>
+              {getUserInitials(
+                (user?.profile as any)?.name || user?.name, 
+                user?.email, 
+                user?.role, 
+                (user?.profile as any)?.admin
+              )}
+            </span>
+          </button>
+
+          {/* Dropdown Menu */}
+          {showUserMenu && (
+            <div className="absolute right-0 top-full mt-2 w-64 bg-popover/95 backdrop-blur-xl border border-border/50 rounded-lg shadow-2xl shadow-border/10 z-50">
+              <div className="p-4 border-b border-border/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-primary font-semibold">
+                    <span>
+                      {getUserInitials(
+                        (user?.profile as any)?.name || user?.name, 
+                        user?.email, 
+                        user?.role, 
+                        (user?.profile as any)?.admin
+                      )}
+                    </span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-foreground truncate">
+                      {user?.role === 'organization' 
+                        ? (user?.profile as any)?.admin || 'Admin Unknown'
+                        : (user?.profile as any)?.name || user?.name || 'Dr. Unknown'
+                      }
+                    </div>
+                    <div className="text-sm text-muted-foreground truncate">
+                      {user?.email || 'user@healthsync.com'}
+                    </div>
+                    <div className="text-xs text-muted-foreground truncate mt-1">
+                      {profileLoading ? (
+                        <div className="h-3 bg-muted rounded w-20 animate-pulse"></div>
+                      ) : user?.role === 'organization' ? (
+                        organizationName || (user?.profile as any)?.organization || 'HealthSync'
+                      ) : (
+                        organizationName || 'HealthSync Medical Center'
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="p-2">
+                <Link 
+                  to="/dashboard/settings" 
+                  onClick={() => setShowUserMenu(false)}
+                  className="flex items-center gap-3 w-full p-2 rounded-md hover:bg-accent/10 transition-colors text-left"
+                >
+                  <Settings className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">Settings</span>
+                </Link>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   )

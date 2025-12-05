@@ -7,12 +7,10 @@ import { useAuth } from "../lib/auth"
 
 export function Header() {
   return (
-    <header className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b border-border">
+    <header className="sticky opacity-85 top-0 z-50 bg-background/95 backdrop-blur border-b border-border">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
-            <img src="/logo-white.png" alt="HealthSync Logo" className="w-6 h-6" />
-          </div>
+            <img src="/logo-red.png" alt="HealthSync Logo" className="w-8 h-8" />
           <Link to="/">
           <span className="text-xl font-semibold text-foreground">HealthSync</span>
           </Link>
