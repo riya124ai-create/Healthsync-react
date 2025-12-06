@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState, useCallback } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { MoreVertical, RefreshCw, Plus } from "lucide-react"
+import { MoreVertical, RefreshCw, Plus, Activity, Calendar, User, Stethoscope } from "lucide-react"
 import EditPatientModal from "./EditPatientModal"
 import ConfirmDeleteModal from "./ConfirmDeleteModal"
 import NewPatientModal from "./NewPatientModal"
@@ -140,82 +140,159 @@ export default function RecentPatients() {
   }, [patients, user])
 
   return (
-    <Card className="bg-card border-border p-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold text-foreground leading-tight">Recent Patients</h2>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => loadPatients()} disabled={loading} aria-label="Refresh patients">
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          </Button>
-          <Button size="sm" onClick={() => setNewPatientOpen(true)} className="flex items-center gap-2">
-            <Plus className="h-4 w-4" />
-            <span className="hidden sm:inline">New patient</span>
-          </Button>
-          
+    <Card className="bg-card border-border overflow-hidden">
+      <div className="bg-gradient-to-r from-primary/5 via-primary/3 to-transparent p-6 border-b border-border/50">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-primary/10">
+              <Activity className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-foreground leading-tight">Recent Patients</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">Your active patient records</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => loadPatients()} disabled={loading} aria-label="Refresh patients" className="shadow-sm hover:shadow-md transition-shadow">
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            </Button>
+            <Button size="sm" onClick={() => setNewPatientOpen(true)} className="flex items-center gap-2 shadow-sm hover:shadow-md transition-shadow">
+              <Plus className="h-4 w-4" />
+              <span className="hidden sm:inline">New Patient</span>
+            </Button>
+          </div>
         </div>
       </div>
 
-      <div className="space-y-4">
-        {/* {loading && <p className="text-sm text-muted-foreground">Loading patients…</p>} */}
-        {!loading && myPatients.length === 0 && (
-          <p className="text-sm text-muted-foreground">No patients yet.</p>
-        )}
-
-        {myPatients.map((patient) => (
-          <div key={patient.id} className="p-0">
-            <div className="flex items-center justify-between sm:hidden p-3 rounded-lg border border-border hover:bg-secondary/20 transition-colors">
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-foreground truncate">{patient.name || '—'}</p>
-                <p className="text-xs text-muted-foreground truncate">{
-                  // Prefer most recent diagnosis for this patient; fall back to patient.disease, then icd11
-                  (latestByPatient[patient.id] && (latestByPatient[patient.id]!.disease || latestByPatient[patient.id]!.icd11))
-                    ? `${latestByPatient[patient.id]!.disease ? latestByPatient[patient.id]!.disease : ''}${latestByPatient[patient.id]!.icd11 ? ` ${latestByPatient[patient.id]!.icd11}` : ''}`.trim()
-                    : (patient.disease ? patient.disease : (patient.icd11 || '—'))
-                }</p>
-              </div>
-              <div className="flex items-center gap-3 ml-3">
-                <span className="text-xs text-muted-foreground">Age: {patient.age ?? '—'}</span>
-                <Button variant="ghost" size="sm" onClick={() => setEditing(patient)}>
-                  <MoreVertical className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-
-            <div className="hidden sm:flex items-center justify-between p-4 rounded-lg border border-border hover:bg-secondary/20 transition-colors">
-              <div className="flex-1">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-                    <span className="text-sm font-semibold text-primary">
-                      {patient.name ? patient.name.split(" ")[0][0] : "P"}
-                      {patient.name && patient.name.split(" ")[1] ? patient.name.split(" ")[1][0] : ""}
-                    </span>
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-foreground">{patient.name}</p>
-                    <p className="text-xs text-muted-foreground">{
-                      // Prefer most recent diagnosis
-                      (latestByPatient[patient.id] && (latestByPatient[patient.id]!.disease || latestByPatient[patient.id]!.icd11))
-                        ? `${latestByPatient[patient.id]!.disease ? latestByPatient[patient.id]!.disease : ''}${latestByPatient[patient.id]!.icd11 ? ` (${latestByPatient[patient.id]!.icd11})` : ''}`.trim()
-                        : (patient.disease ? `${patient.disease}${patient.icd11 ? ` (${patient.icd11})` : ''}` : (patient.icd11 || "—"))
-                    }</p>
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center gap-4">
-                <div className="text-right">
-                  <p className="text-xs text-muted-foreground">Age: {patient.age ?? "—"}</p>
-                  <p className="text-xs text-muted-foreground">{formatDateWithRelative(patient.createdAt)}</p>
-                </div>
-                <Button variant="ghost" size="sm" onClick={() => setEditing(patient)}>
-                  <MoreVertical className="w-4 h-4" />
-                </Button>
-              </div>
+      <div className="p-6">
+        {loading && (
+          <div className="flex items-center justify-center py-8">
+            <div className="flex items-center gap-3 text-muted-foreground">
+              <RefreshCw className="w-5 h-5 animate-spin" />
+              <span className="text-sm">Loading patients...</span>
             </div>
           </div>
-        ))}
-        <EditPatientModal open={!!editing} onClose={() => setEditing(null)} patient={editing} onSaved={() => { setEditing(null); loadPatients() }} onRequestDelete={(p) => { setEditing(null); setDeleting(p) }} />
-        <ConfirmDeleteModal open={!!deleting} onClose={() => setDeleting(null)} patient={deleting} onDeleted={() => { setDeleting(null); loadPatients() }} />
-        <NewPatientModal open={newPatientOpen} onClose={() => setNewPatientOpen(false)} onCreated={() => { setNewPatientOpen(false); loadPatients() }} />
+        )}
+        
+        {!loading && myPatients.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <div className="p-4 rounded-full bg-muted/50 mb-4">
+              <User className="h-8 w-8 text-muted-foreground" />
+            </div>
+            <p className="text-sm font-medium text-foreground mb-1">No patients yet</p>
+            <p className="text-xs text-muted-foreground">Add your first patient to get started</p>
+          </div>
+        )}
+
+        <div className="space-y-3">
+          {myPatients.map((patient) => {
+            const diagnosis = latestByPatient[patient.id]
+            const hasDiagnosis = diagnosis && (diagnosis.disease || diagnosis.icd11)
+            
+            return (
+              <div key={patient.id} className="group">
+                {/* Mobile View */}
+                <div className="sm:hidden p-3 rounded-lg border border-border bg-gradient-to-br from-card via-card to-muted/20 hover:shadow-lg hover:border-primary/30 transition-all duration-300">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-2.5 flex-1 min-w-0">
+                      <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center flex-shrink-0 shadow-sm">
+                        <span className="text-sm font-bold text-primary">
+                          {patient.name ? patient.name.split(" ")[0][0] : "P"}
+                          {patient.name && patient.name.split(" ")[1] ? patient.name.split(" ")[1][0] : ""}
+                        </span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-foreground truncate mb-0.5">{patient.name || '—'}</p>
+                        {hasDiagnosis ? (
+                          <div className="flex items-center gap-1.5 mb-1.5">
+                            <Stethoscope className="h-3 w-3 text-primary flex-shrink-0" />
+                            <p className="text-xs text-muted-foreground truncate">
+                              {diagnosis.disease || diagnosis.icd11}
+                            </p>
+                          </div>
+                        ) : (
+                          <p className="text-xs text-muted-foreground mb-1.5">No diagnosis yet</p>
+                        )}
+                        <div className="flex items-center gap-2.5 text-xs text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <User className="h-3 w-3" />
+                            {patient.age ?? '—'} yrs
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            {formatDateWithRelative(patient.createdAt)?.split(' (')[0]}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={() => setEditing(patient)} className="opacity-70 group-hover:opacity-100 transition-opacity">
+                      <MoreVertical className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Desktop View */}
+                <div className="hidden sm:flex items-center justify-between p-3 rounded-lg border border-border bg-gradient-to-br from-card via-card to-muted/20 hover:shadow-lg hover:border-primary/30 transition-all duration-300">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center flex-shrink-0 shadow-sm group-hover:scale-105 transition-transform duration-300">
+                      <span className="text-sm font-bold text-primary">
+                        {patient.name ? patient.name.split(" ")[0][0] : "P"}
+                        {patient.name && patient.name.split(" ")[1] ? patient.name.split(" ")[1][0] : ""}
+                      </span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <p className="text-sm font-semibold text-foreground">{patient.name}</p>
+                        {hasDiagnosis && (
+                          <span className="px-1.5 py-0.5 rounded-full text-xs bg-primary/10 text-primary font-medium">
+                            Diagnosed
+                          </span>
+                        )}
+                      </div>
+                      {hasDiagnosis ? (
+                        <div className="flex items-center gap-1.5">
+                          <Stethoscope className="h-3 w-3 text-primary flex-shrink-0" />
+                          <p className="text-xs text-muted-foreground truncate">
+                            {diagnosis.disease && diagnosis.icd11 
+                              ? `${diagnosis.disease} (${diagnosis.icd11})`
+                              : diagnosis.disease || diagnosis.icd11
+                            }
+                          </p>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-muted-foreground italic">No diagnosis recorded</p>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-4">
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-1.5 text-xs">
+                        <User className="h-3 w-3 text-muted-foreground" />
+                        <span className="text-foreground font-medium">{patient.age ?? "—"}</span>
+                        <span className="text-muted-foreground">years</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <Calendar className="h-3 w-3" />
+                        <span>{formatDateWithRelative(patient.createdAt)}</span>
+                      </div>
+                    </div>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => setEditing(patient)}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity hover:bg-primary/10 hover:text-primary"
+                    >
+                      <MoreVertical className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>      <EditPatientModal open={!!editing} onClose={() => setEditing(null)} patient={editing} onSaved={() => { setEditing(null); loadPatients() }} onRequestDelete={(p) => { setEditing(null); setDeleting(p) }} />
+      <ConfirmDeleteModal open={!!deleting} onClose={() => setDeleting(null)} patient={deleting} onDeleted={() => { setDeleting(null); loadPatients() }} />
+      <NewPatientModal open={newPatientOpen} onClose={() => setNewPatientOpen(false)} onCreated={() => { setNewPatientOpen(false); loadPatients() }} />
       </div>
     </Card>
   )

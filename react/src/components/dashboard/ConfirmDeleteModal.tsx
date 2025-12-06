@@ -25,14 +25,16 @@ export default function ConfirmDeleteModal({ open, onClose, patient, onDeleted }
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative w-full max-w-sm mx-4 bg-card border-border rounded-lg shadow-lg p-6">
+    <div className="fixed inset-0 z-50 overflow-y-auto">
+      <div className="fixed inset-0 bg-black/50" onClick={onClose} />
+      <div className="flex min-h-screen items-center justify-center p-4">
+        <div className="relative w-full max-w-md bg-card border border-border rounded-lg shadow-lg p-6">
         <h3 className="text-lg font-semibold mb-2">Delete Patient</h3>
         <p className="text-sm text-muted-foreground mb-4">Are you sure you want to delete <strong>{patient.name || 'this patient'}</strong>? This action cannot be undone.</p>
         <div className="flex items-center justify-end gap-2">
           <Button variant="outline" onClick={onClose} type="button">Cancel</Button>
           <Button variant="destructive" onClick={handleDelete} disabled={deleting}>{deleting ? 'Deleting…' : 'Delete'}</Button>
+        </div>
         </div>
       </div>
     </div>

@@ -244,8 +244,9 @@ export default function OrgDoctorsPanel({ orgId }: { orgId: string | null }) {
                     await refreshDoctors()
                     setPanelError(txt || 'Failed to assign patient')
                   } else {
-                    // success — refresh to reconcile metadata
+                    // success — refresh to reconcile metadata and show success message
                     await refreshDoctors()
+                    console.log('✅ Patient assigned successfully - doctor will receive real-time notification')
                   }
                 } catch (err) {
                   console.error('drop assign error', err)

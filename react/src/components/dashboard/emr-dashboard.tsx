@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card"
 import RecentPatients from "./recent-patients"
 import IntegrationStatus from "./integration-status"
 import OrgDoctorsPanel from "./OrgDoctorsPanel"
+import RecentlyAssignedPanel from "./RecentlyAssignedPanel"
 import { Button } from "../ui/button"
 import NewPatientModal from "./NewPatientModal"
 import AddDiagnosisModal from "./AddDiagnosisModal"
@@ -17,6 +18,7 @@ export default function EMRDashboard() {
   const [open, setOpen] = useState(false)
   const [addDiagOpen, setAddDiagOpen] = useState(false)
   const [viewReports, setViewReports] = useState(false)
+  const [selectedPatientForDiag, setSelectedPatientForDiag] = useState<string | undefined>(undefined)
 
   const [orgPatients, setOrgPatients] = useState<Array<{ id: string; name?: string; age?: number; createdAt?: string; createdBy?: string }>>([])
   const [latestByPatient, setLatestByPatient] = useState<Record<string, { id?: string; patientId?: string; icd11?: string | null; disease?: string | null; createdAt?: string | null } | null>>({})
@@ -85,69 +87,46 @@ export default function EMRDashboard() {
     <>
       <div className=" space-y-6">
         <div>
-          {/* Top 3 recent patients on large screens */}
-          <div className="hidden lg:flex items-start gap-4 mb-4">
-            {orgPatients
-              .slice()
-              .sort((a, b) => {
-                const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0
-                const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0
-                return tb - ta
-              })
-              .slice(0, 3)
-              .map(p => (
-                <div key={p.id} className="min-w-[260px] border border-border rounded-lg p-4 bg-card">
-                  <div className="flex items-start gap-3">
-                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center font-semibold text-sm">{(p.name || p.id || '').slice(0,2).toUpperCase()}</div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-semibold truncate">{p.name || p.id}</div>
-                      <div className="text-xs text-muted-foreground">{p.age ?? '—'} years · {p.createdAt ? new Date(p.createdAt).toLocaleDateString() : '—'}</div>
-                      <div className="text-xs text-muted-foreground mt-2">{p.createdBy ? (doctorMap[p.createdBy]?.name || doctorMap[p.createdBy]?.email || p.createdBy) : 'Unassigned'}</div>
-                    </div>
-                    <div>
-                      <button className="px-2 py-1 rounded-md bg-primary text-primary-foreground text-sm" onClick={() => { setAssignPatient({ id: p.id, name: p.name }); setAssignDoctorId(p.createdBy); setAssignOpen(true) }}>Assign</button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            {/* <div className="flex items-center">
-              <button className="px-4 py-2 rounded-md border border-border bg-card" onClick={() => { setShowAllPatients(true); window.setTimeout(() => { const el = document.getElementById('org-patients-table'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }) }, 100) }}>See all patients</button>
-            </div> */}
-          </div>
           <h1 className="text-3xl font-bold text-foreground">EMR Dashboard</h1>
           <p className="text-muted-foreground mt-1">Electronic Medical Records with Traditional Medicine Integration</p>
         </div>
 
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {/* Main content area */}
+          <div className="lg:col-span-3 space-y-6">
             <RecentPatients />
             <IntegrationStatus />
           </div>
 
-          <div className="space-y-6">
-
-            <Card className="bg-card border-border p-6">
-              <h3 className="text-lg font-semibold text-foreground mb-4">Quick Actions</h3>
-              <div className="space-y-2">
-                <Button className="w-full px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors flex items-center justify-center" onClick={() => setOpen(true)}>
-                  <Plus className="h-4 w-4" />
-                  <span className="hidden sm:inline ml-2">New Patient Record</span>
-                </Button>
-                <Button className="w-full px-4 py-2 rounded-lg bg-accent text-accent-foreground text-sm font-medium hover:bg-accent/90 transition-colors flex items-center justify-center" onClick={() => setAddDiagOpen(true)}>
-                  <Plus className="h-4 w-4" />
-                  <span className="hidden sm:inline ml-2">Add Diagnosis</span>
-                </Button>
-                <AddDiagnosisModal open={addDiagOpen} onClose={() => setAddDiagOpen(false)} onAdded={() => setAddDiagOpen(false)} onRequestNewPatient={() => { setAddDiagOpen(false); setOpen(true); }} />
-                <button className="w-full px-4 py-2 rounded-lg border border-border text-foreground text-sm font-medium hover:bg-card transition-colors" onClick={() => setViewReports(true)}>
-                  View Reports
-                </button>
-                <ReportsModal open={viewReports} onClose={() => setViewReports(false)} />
-              </div>
-            </Card>
+          {/* Side panel for recently assigned patients */}
+          <div className="lg:col-span-1">
+            <div className="sticky top-6">
+              <RecentlyAssignedPanel 
+                onWriteDiagnosis={(patientId) => {
+                  // Open diagnosis modal with pre-selected patient
+                  setSelectedPatientForDiag(patientId)
+                  setAddDiagOpen(true)
+                }}
+              />
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Add Diagnosis Modal */}
+      <AddDiagnosisModal 
+        open={addDiagOpen} 
+        onClose={() => {
+          setAddDiagOpen(false)
+          setSelectedPatientForDiag(undefined)
+        }} 
+        onAdded={() => {
+          setAddDiagOpen(false)
+          setSelectedPatientForDiag(undefined)
+          // Patient will be removed via socket event 'patient:diagnosis-added'
+        }}
+        preSelectedPatientId={selectedPatientForDiag}
+      />
     </>
   )
 
@@ -346,9 +325,10 @@ export default function EMRDashboard() {
           </div>
         </div>
         {assignOpen && assignPatient && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center">
-            <div className="absolute inset-0 bg-black/50" onClick={() => { setAssignOpen(false); setAssignPatient(null); setAssignDoctorId(undefined) }} />
-            <div className="relative w-full max-w-md mx-4 bg-card border-border rounded-lg shadow-lg p-6">
+          <div className="fixed inset-0 z-50 overflow-y-auto">
+            <div className="fixed inset-0 bg-black/50" onClick={() => { setAssignOpen(false); setAssignPatient(null); setAssignDoctorId(undefined) }} />
+            <div className="flex min-h-screen items-center justify-center p-4">
+              <div className="relative w-full max-w-md bg-card border border-border rounded-lg shadow-lg p-6">
               <h3 className="text-lg font-semibold mb-3">Assign Patient</h3>
               <div className="text-sm text-muted-foreground mb-4">Assign <span className="font-medium">{assignPatient.name || assignPatient.id}</span> to a doctor</div>
               <div className="space-y-3">
@@ -388,6 +368,7 @@ export default function EMRDashboard() {
                     disabled={assigning}
                   >{assigning ? 'Assigning…' : 'Assign'}</button>
                 </div>
+              </div>
               </div>
             </div>
           </div>

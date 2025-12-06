@@ -178,8 +178,65 @@ router.post('/:id/patients/:pid/assign', async (req, res) => {
     const existing = await patientsCol.findOne({ _id: new (require('mongodb').ObjectId)(pid) })
     if (!existing) return res.status(404).json({ error: 'patient not found' })
 
-    await patientsCol.updateOne({ _id: new (require('mongodb').ObjectId)(pid) }, { $set: { createdBy: String(doctorId), updatedAt: new Date() } })
+    await patientsCol.updateOne({ _id: new (require('mongodb').ObjectId)(pid) }, { $set: { createdBy: String(doctorId), assignedAt: new Date(), updatedAt: new Date() } })
     const updated = await patientsCol.findOne({ _id: new (require('mongodb').ObjectId)(pid) })
+    
+    // Create notification object
+    const notificationData = {
+      patientId: String(updated._id),
+      patientName: updated.name || 'Unknown Patient',
+      patientAge: updated.age,
+      assignedBy: data.email || 'Admin',
+      organizationName: org.name,
+      timestamp: new Date().toISOString(),
+      message: `New patient "${updated.name}" has been assigned to you`
+    }
+    
+    // Save notification to database for persistence
+    try {
+      const notification = {
+        userId: String(doctorId),
+        type: 'patient-assigned',
+        title: 'New Patient Assigned',
+        message: notificationData.message,
+        timestamp: new Date(),
+        read: false,
+        data: {
+          patientId: notificationData.patientId,
+          patientName: notificationData.patientName,
+          patientAge: notificationData.patientAge,
+          assignedBy: notificationData.assignedBy,
+          organizationName: notificationData.organizationName,
+        }
+      }
+      await db.collection('notifications').insertOne(notification)
+      console.log(`Notification saved to database for doctor ${doctorId}`)
+    } catch (dbErr) {
+      console.error('Database notification save error:', dbErr)
+      // Continue even if saving fails
+    }
+    
+    // Emit real-time notification to the doctor via Socket.IO if they're online
+    try {
+      const io = req.app.get('io')
+      const userSockets = req.app.get('userSockets')
+      
+      if (io && userSockets) {
+        const doctorSocketId = userSockets.get(String(doctorId))
+        
+        if (doctorSocketId) {
+          // Doctor is online - send real-time notification
+          io.to(doctorSocketId).emit('patient:assigned', notificationData)
+          console.log(`Real-time notification sent to doctor ${doctorId}`)
+        } else {
+          console.log(`Doctor ${doctorId} is offline - notification saved to database`)
+        }
+      }
+    } catch (socketErr) {
+      console.error('Socket notification error:', socketErr)
+      // Don't fail the request if socket notification fails
+    }
+    
     return res.json({ ok: true, patient: { id: String(updated._id), name: updated.name, age: updated.age, createdBy: updated.createdBy } })
   } catch (err) {
     console.error('assign patient error', err)

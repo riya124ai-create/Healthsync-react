@@ -7,7 +7,7 @@ import { useAuth } from "@/lib/auth"
 
 type Patient = { id: string; name?: string; createdBy?: string }
 
-export default function AddDiagnosisModal({ open, onClose, onAdded }: { open: boolean; onClose: () => void; onAdded?: () => void; onRequestNewPatient?: () => void }) {
+export default function AddDiagnosisModal({ open, onClose, onAdded, preSelectedPatientId }: { open: boolean; onClose: () => void; onAdded?: () => void; onRequestNewPatient?: () => void; preSelectedPatientId?: string }) {
   const { authFetch, user } = useAuth()
   const [patients, setPatients] = useState<Patient[]>([])
   const [selected, setSelected] = useState<string | null>(null)
@@ -56,12 +56,12 @@ export default function AddDiagnosisModal({ open, onClose, onAdded }: { open: bo
     setIcd11(null)
     setDisease(null)
     setQuery("")
-    setSelected(null)
+    setSelected(preSelectedPatientId || null)
     setError(null)
     setNotes("")
     setNewName("")
     setNewAge("")
-  }, [open])
+  }, [open, preSelectedPatientId])
 
   function resetForm() {
     setSelected(null)
@@ -181,6 +181,15 @@ export default function AddDiagnosisModal({ open, onClose, onAdded }: { open: bo
       const payload = { icd11: icd11, disease, notes }
       const res = await authFetch(`/api/patients/${targetPatientId}/diagnoses`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
       if (!res.ok) throw new Error('failed to add diagnosis')
+      
+      // Delete the patient assignment notification
+      try {
+        await authFetch(`/api/notifications/patient/${targetPatientId}`, { method: 'DELETE' })
+      } catch (notifErr) {
+        console.warn('Failed to delete notification:', notifErr)
+        // Don't fail the operation if notification deletion fails
+      }
+      
       onAdded?.()
       resetForm()
       onClose()
@@ -193,9 +202,10 @@ export default function AddDiagnosisModal({ open, onClose, onAdded }: { open: bo
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/50" onClick={() => { resetForm(); onClose() }} />
-      <div className="relative w-full max-w-md mx-4 bg-card border-border rounded-lg shadow-lg p-6">
+    <div className="fixed inset-0 z-50 overflow-y-auto">
+      <div className="fixed inset-0 bg-black/50" onClick={() => { resetForm(); onClose() }} />
+      <div className="flex min-h-screen items-center justify-center p-4">
+        <div className="relative w-full max-w-md bg-card border border-border rounded-lg shadow-lg p-6">
         <h3 className="text-lg font-semibold mb-4">Add Diagnosis</h3>
         <form onSubmit={handleAdd} className="space-y-3">
           <div>
@@ -268,6 +278,7 @@ export default function AddDiagnosisModal({ open, onClose, onAdded }: { open: bo
             <Button type="submit" disabled={saving || !selected}>{saving ? 'Adding…' : 'Add Diagnosis'}</Button>
           </div>
         </form>
+        </div>
       </div>
     </div>
   )

@@ -41,13 +41,80 @@ router.post('/', async (req, res) => {
   }
 })
 
+// GET /api/diagnoses - return ALL diagnoses created by the requester (must be before /api/patients/:id)
+router.get('/diagnoses', async (req, res) => {
+  try {
+    const token = getTokenFromReq(req)
+    if (!token) return res.status(401).json({ error: 'missing token' })
+    let data
+    try { data = jwt.verify(token, JWT_SECRET) } catch (err) { return res.status(401).json({ error: 'invalid token' }) }
+
+    const requester = data.id || data.email || null
+    if (!requester) return res.status(401).json({ error: 'invalid requester' })
+
+    const db = await getDb()
+    if (!db) return res.status(503).json({ diagnoses: [] })
+
+    // Find ALL patients that have diagnoses created by this doctor
+    const cursor = db.collection('patients').find(
+      { 'diagnoses.createdBy': requester },
+      { projection: { name: 1, age: 1, diagnoses: 1, createdBy: 1, createdAt: 1 } }
+    )
+    const results = await cursor.toArray()
+    const list = []
+    for (const p of results) {
+      const pid = String(p._id)
+      const pname = p.name || ''
+      const diags = Array.isArray(p.diagnoses) ? p.diagnoses : []
+      // Only include diagnoses created by this doctor
+      for (const d of diags) {
+        if (d.createdBy === requester) {
+          list.push({
+            patientId: pid,
+            patientName: pname,
+            patient: {
+              id: pid,
+              name: p.name,
+              age: p.age,
+              createdBy: p.createdBy,
+              createdAt: p.createdAt
+            },
+            id: d.id || String(d._id || ''),
+            icd11: d.icd11 || null,
+            disease: d.disease || null,
+            notes: d.notes || null,
+            createdAt: d.createdAt || null,
+            createdBy: d.createdBy || null
+          })
+        }
+      }
+    }
+    // sort most recent first
+    list.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+    return res.json({ diagnoses: list })
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('fetch diagnoses error', err)
+    return res.status(500).json({ error: 'failed to fetch diagnoses' })
+  }
+})
+
 router.get('/', async (req, res) => {
   try {
+    const token = getTokenFromReq(req)
+    if (!token) return res.status(401).json({ error: 'missing token' })
+    let data
+    try { data = jwt.verify(token, JWT_SECRET) } catch (err) { return res.status(401).json({ error: 'invalid token' }) }
+    
+    const requester = data.id || data.email || null
+    if (!requester) return res.status(401).json({ error: 'invalid requester' })
+
     const db = await getDb()
     if (!db) return res.status(503).json({ patients: [] })
 
-    const docs = await db.collection('patients').find().sort({ createdAt: -1 }).limit(50).toArray()
-  const patients = docs.map(d => ({ id: String(d._id), name: d.name, age: d.age, icd11: d.icd11, disease: d.disease, createdAt: d.createdAt, createdBy: d.createdBy }))
+    // Only return patients created by this user (assigned to them)
+    const docs = await db.collection('patients').find({ createdBy: requester }).sort({ createdAt: -1 }).limit(50).toArray()
+    const patients = docs.map(d => ({ id: String(d._id), name: d.name, age: d.age, icd11: d.icd11, disease: d.disease, createdAt: d.createdAt, createdBy: d.createdBy, assignedAt: d.assignedAt }))
     return res.json({ patients })
   } catch (err) {
     // eslint-disable-next-line no-console
@@ -144,7 +211,45 @@ router.post('/:id/diagnoses', async (req, res) => {
     if (owner && requester && owner !== requester) return res.status(403).json({ error: 'forbidden' })
 
     const diag = { id: String(new ObjectId()), icd11: icd11 || null, disease: disease ? String(disease) : null, notes: notes ? String(notes) : null, createdAt: new Date(), createdBy: requester }
-    await patients.updateOne({ _id: new ObjectId(id) }, { $push: { diagnoses: diag }, $set: { updatedAt: new Date() } })
+    
+    // Add diagnosis and update patient record (keep patient assigned to doctor, clear assignedAt)
+    await patients.updateOne({ _id: new ObjectId(id) }, { 
+      $push: { diagnoses: diag }, 
+      $set: { assignedAt: null, updatedAt: new Date() } 
+    })
+    
+    // Delete the patient assignment notification
+    try {
+      await db.collection('notifications').deleteOne({
+        userId: requester,
+        type: 'patient-assigned',
+        'data.patientId': id
+      })
+      console.log(`Deleted patient assignment notification for patient ${id}`)
+    } catch (notifErr) {
+      console.error('Error deleting notification:', notifErr)
+    }
+    
+    // Emit socket event to remove patient from recently assigned panel
+    try {
+      const io = req.app.get('io')
+      const userSockets = req.app.get('userSockets')
+      
+      if (io && userSockets) {
+        const doctorSocketId = userSockets.get(String(requester))
+        
+        if (doctorSocketId) {
+          io.to(doctorSocketId).emit('patient:diagnosis-added', {
+            patientId: id,
+            diagnosisId: diag.id
+          })
+          console.log(`Emitted diagnosis-added event to doctor ${requester}`)
+        }
+      }
+    } catch (socketErr) {
+      console.error('Socket event error:', socketErr)
+    }
+    
     return res.status(201).json({ diagnosis: diag })
   } catch (err) {
     // eslint-disable-next-line no-console
@@ -153,40 +258,61 @@ router.post('/:id/diagnoses', async (req, res) => {
   }
 })
 
-module.exports = router
-
-// GET /api/patients/diagnoses - return diagnoses for patients owned by the requester
-router.get('/diagnoses', async (req, res) => {
+// GET /api/patients/:id/diagnoses - get diagnoses for a specific patient
+router.get('/:id/diagnoses', async (req, res) => {
   try {
     const token = getTokenFromReq(req)
     if (!token) return res.status(401).json({ error: 'missing token' })
     let data
     try { data = jwt.verify(token, JWT_SECRET) } catch (err) { return res.status(401).json({ error: 'invalid token' }) }
 
-    const requester = data.id || data.email || null
-    if (!requester) return res.status(401).json({ error: 'invalid requester' })
-
+    const id = req.params.id
     const db = await getDb()
-    if (!db) return res.status(503).json({ diagnoses: [] })
+    if (!db) return res.status(503).json({ error: 'database unavailable' })
 
-    // find patients owned by requester and collect their diagnoses
-    const cursor = db.collection('patients').find({ createdBy: requester }, { projection: { name: 1, diagnoses: 1 } })
-    const results = await cursor.toArray()
-    const list = []
-    for (const p of results) {
-      const pid = String(p._id)
-      const pname = p.name || ''
-      const diags = Array.isArray(p.diagnoses) ? p.diagnoses : []
-      for (const d of diags) {
-        list.push({ patientId: pid, patientName: pname, id: d.id || String(d._id || ''), icd11: d.icd11 || null, disease: d.disease || null, notes: d.notes || null, createdAt: d.createdAt || null, createdBy: d.createdBy || null })
-      }
-    }
-    // sort most recent first
-    list.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
-    return res.json({ diagnoses: list })
+    const patients = db.collection('patients')
+    const doc = await patients.findOne({ _id: new ObjectId(id) })
+    if (!doc) return res.status(404).json({ error: 'patient not found' })
+
+    const diagnoses = Array.isArray(doc.diagnoses) ? doc.diagnoses : []
+    return res.json({ diagnoses })
   } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error('fetch diagnoses error', err)
+    console.error('fetch patient diagnoses error', err)
     return res.status(500).json({ error: 'failed to fetch diagnoses' })
   }
 })
+
+// GET /api/patients/:id - get a single patient by ID
+router.get('/:id', async (req, res) => {
+  try {
+    const token = getTokenFromReq(req)
+    if (!token) return res.status(401).json({ error: 'missing token' })
+    let data
+    try { data = jwt.verify(token, JWT_SECRET) } catch (err) { return res.status(401).json({ error: 'invalid token' }) }
+
+    const id = req.params.id
+    const db = await getDb()
+    if (!db) return res.status(503).json({ error: 'database unavailable' })
+
+    const patients = db.collection('patients')
+    const doc = await patients.findOne({ _id: new ObjectId(id) })
+    if (!doc) return res.status(404).json({ error: 'patient not found' })
+
+    const patient = {
+      id: String(doc._id),
+      name: doc.name,
+      age: doc.age,
+      icd11: doc.icd11,
+      disease: doc.disease,
+      createdAt: doc.createdAt,
+      assignedAt: doc.assignedAt,
+      createdBy: doc.createdBy
+    }
+    return res.json({ patient })
+  } catch (err) {
+    console.error('patient GET by ID error', err)
+    return res.status(500).json({ error: 'failed to fetch patient' })
+  }
+})
+
+module.exports = router

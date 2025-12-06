@@ -157,10 +157,10 @@ export default function NewPatientModal({ open, onClose, onCreated, orgId }: Pro
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-
-      <div className="relative w-full max-w-lg mx-4 bg-card border-border rounded-lg shadow-lg p-6">
+    <div className="fixed inset-0 z-50 overflow-y-auto">
+      <div className="fixed inset-0 bg-black/50" onClick={onClose} />
+      <div className="flex min-h-screen items-center justify-center p-4">
+        <div className="relative w-full max-w-lg bg-card border border-border rounded-lg shadow-lg p-6">
         <h2 className="text-lg font-semibold mb-4">New Patient Record</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -200,6 +200,7 @@ export default function NewPatientModal({ open, onClose, onCreated, orgId }: Pro
             <Button type="submit" disabled={!canSubmit || saving}>{saving ? 'Saving…' : 'Create Record'}</Button>
           </div>
         </form>
+        </div>
       </div>
     </div>
   )

@@ -1,15 +1,19 @@
 "use client"
 
 import { Link } from "react-router-dom"
-import { Menu, Search, Settings } from "lucide-react"
+import { Menu, Search, Settings, Bell, X, UserPlus, CheckCircle, AlertCircle, Info } from "lucide-react"
 import ThemeToggle from "@/components/theme-toggle"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useState, useEffect, useRef } from "react"
 import { useAuth } from "@/lib/auth"
+import type { Notification } from "./NotificationCenter"
 
 interface HeaderProps {
   onSidebarToggle: () => void
+  notifications?: Notification[]
+  onClearNotifications?: () => void
+  onRemoveNotification?: (id: string) => void
 }
 
 const traditionalCatalog = [
@@ -18,17 +22,48 @@ const traditionalCatalog = [
   { id: 'trad-3', ayush: 'Prana-Vikriti', ayushSystem: 'Ayurveda', icd: '6A40', title: 'Anxiety disorder (example)', description: 'Anxiety-like concept mapped.' }
 ]
 
-export default function Header({ onSidebarToggle }: HeaderProps) {
+export default function Header({ onSidebarToggle, notifications = [], onClearNotifications, onRemoveNotification }: HeaderProps) {
   const [query, setQuery] = useState("")
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [searchResults, setSearchResults] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [showResults, setShowResults] = useState(false)
   const [showUserMenu, setShowUserMenu] = useState(false)
+  const [showNotifications, setShowNotifications] = useState(false)
   const [organizationName, setOrganizationName] = useState<string | null>(null)
   const [profileLoading, setProfileLoading] = useState(true)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const { user, authFetch } = useAuth()
+
+  const unreadCount = notifications.length
+
+  const getNotificationIcon = (type: Notification['type']) => {
+    switch (type) {
+      case 'patient-assigned':
+        return <UserPlus className="w-4 h-4" />
+      case 'success':
+        return <CheckCircle className="w-4 h-4" />
+      case 'error':
+        return <AlertCircle className="w-4 h-4" />
+      case 'warning':
+        return <AlertCircle className="w-4 h-4" />
+      default:
+        return <Info className="w-4 h-4" />
+    }
+  }
+
+  const formatNotificationTime = (date: Date) => {
+    const now = new Date()
+    const diff = now.getTime() - date.getTime()
+    const seconds = Math.floor(diff / 1000)
+    const minutes = Math.floor(seconds / 60)
+    const hours = Math.floor(minutes / 60)
+    
+    if (seconds < 60) return 'Just now'
+    if (minutes < 60) return `${minutes}m ago`
+    if (hours < 24) return `${hours}h ago`
+    return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+  }
 
   const getUserInitials = (name?: string, email?: string, userRole?: string, adminName?: string) => {
 
@@ -194,16 +229,128 @@ export default function Header({ onSidebarToggle }: HeaderProps) {
         </div>
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3">
         <ThemeToggle />
+
+        {/* Notification Bell - Only show for doctors */}
+        {user?.role === 'doctor' && (
+          <div className="relative">
+            <button
+              onClick={() => {
+                setShowNotifications(!showNotifications)
+                setShowUserMenu(false)
+              }}
+              onBlur={() => setTimeout(() => setShowNotifications(false), 200)}
+              aria-label="View notifications"
+              className="relative w-10 h-10 rounded-full bg-muted/50 hover:bg-muted flex items-center justify-center text-foreground transition-all duration-200 hover:scale-105"
+            >
+              <Bell className="w-5 h-5" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center animate-pulse">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </button>
+
+          {/* Notification Dropdown */}
+          {showNotifications && (
+            <div className="fixed md:absolute right-2 md:right-0 left-2 md:left-auto top-16 md:top-full mt-0 md:mt-2 w-auto md:w-80 lg:w-96 max-h-[calc(100vh-5rem)] md:max-h-[32rem] bg-popover/95 backdrop-blur-xl border border-border/50 rounded-lg shadow-2xl shadow-border/10 z-50 overflow-hidden flex flex-col">
+              {/* Header */}
+              <div className="p-3 md:p-4 border-b border-border/50 flex items-center justify-between bg-muted/30">
+                <div>
+                  <h3 className="font-semibold text-sm">Today's Notifications</h3>
+                  <p className="text-xs text-muted-foreground">{unreadCount} notification{unreadCount !== 1 ? 's' : ''}</p>
+                </div>
+                {unreadCount > 0 && onClearNotifications && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onClearNotifications()
+                    }}
+                    className="text-xs text-primary hover:underline"
+                  >
+                    Clear all
+                  </button>
+                )}
+              </div>
+
+              {/* Notification List */}
+              <div className="overflow-y-auto flex-1">
+                {notifications.length === 0 ? (
+                  <div className="p-8 text-center">
+                    <Bell className="w-12 h-12 mx-auto mb-3 text-muted-foreground/50" />
+                    <p className="text-sm text-muted-foreground">No notifications today</p>
+                    <p className="text-xs text-muted-foreground/70 mt-1">You're all caught up!</p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-border/30">
+                    {notifications.map((notification) => (
+                      <div
+                        key={notification.id}
+                        className="p-4 hover:bg-accent/10 transition-colors relative group"
+                      >
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            onRemoveNotification?.(notification.id)
+                          }}
+                          className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-destructive/10 rounded"
+                          aria-label="Dismiss notification"
+                        >
+                          <X className="w-3 h-3 text-muted-foreground hover:text-destructive" />
+                        </button>
+
+                        <div className="flex gap-2 md:gap-3 pr-6">
+                          <div className="shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary mt-1">
+                            {getNotificationIcon(notification.type)}
+                          </div>
+                          
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-semibold text-sm mb-1 leading-tight">
+                              {notification.title}
+                            </h4>
+                            <p className="text-xs md:text-sm text-muted-foreground leading-snug mb-2">
+                              {notification.message}
+                            </p>
+
+                            {notification.data?.patientName && (
+                              <div className="flex flex-wrap items-center gap-2 text-xs mb-2">
+                                <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+                                  {notification.data.patientName as string}
+                                </span>
+                                {notification.data.patientAge && (
+                                  <span className="text-muted-foreground">
+                                    Age: {notification.data.patientAge}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+
+                            <div className="text-xs text-muted-foreground/70">
+                              {formatNotificationTime(notification.timestamp)}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+          </div>
+        )}
         
         {/* User Menu Dropdown */}
         <div className="relative">
           <button
-            onClick={() => setShowUserMenu(!showUserMenu)}
+            onClick={() => {
+              setShowUserMenu(!showUserMenu)
+              setShowNotifications(false)
+            }}
             onBlur={() => setTimeout(() => setShowUserMenu(false), 200)}
             aria-label="Open user menu"
-            className="w-10 h-10 rounded-full bg-primary/20 hover:bg-primary/30 flex items-center justify-center text-primary font-semibold text-sm transition-all duration-200"
+            className="w-10 h-10 rounded-full bg-primary/20 hover:bg-primary/30 flex items-center justify-center text-primary font-semibold text-sm transition-all duration-200 hover:scale-105"
           >
             <span>
               {getUserInitials(

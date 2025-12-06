@@ -66,9 +66,10 @@ export default function ReportsModal({ open, onClose }: { open: boolean; onClose
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative w-full max-w-2xl mx-4 bg-card border-border rounded-lg shadow-lg p-6">
+    <div className="fixed inset-0 z-50 overflow-y-auto">
+      <div className="fixed inset-0 bg-black/50" onClick={onClose} />
+      <div className="flex min-h-screen items-center justify-center p-4">
+        <div className="relative w-full max-w-2xl bg-card border border-border rounded-lg shadow-lg p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold">Diagnosis Reports</h3>
           <div>
@@ -98,6 +99,7 @@ export default function ReportsModal({ open, onClose }: { open: boolean; onClose
               )}
             </div>
           ))}
+        </div>
         </div>
       </div>
     </div>

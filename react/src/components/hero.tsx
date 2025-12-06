@@ -218,12 +218,12 @@ export function Hero() {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.6, delay: 0.3 }}
                     >
-                      <span className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 dark:from-white dark:via-slate-100 dark:to-white bg-clip-text text-transparent">
+                      <span className="bg-linear-to-r from-slate-900 via-slate-800 to-slate-900 dark:from-white dark:via-slate-100 dark:to-white bg-clip-text text-transparent">
                         Health
                       </span>
                     </motion.span>
                     <motion.span 
-                      className="bg-gradient-to-r from-sky-400 via-cyan-400 to-emerald-400 bg-clip-text text-transparent"
+                      className="bg-linear-to-r from-sky-400 via-cyan-400 to-emerald-400 bg-clip-text text-transparent"
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.6, delay: 0.4 }}
@@ -258,7 +258,7 @@ export function Hero() {
                 >
                   <Button 
                     size="lg" 
-                    className="bg-gradient-to-r from-sky-500 to-emerald-500 hover:from-sky-600 hover:to-emerald-600 text-white px-8 py-6 text-lg shadow-xl shadow-sky-500/25 hover:shadow-sky-500/40 transition-all duration-300"
+                    className="bg-linear-to-r from-sky-500 to-emerald-500 hover:from-sky-600 hover:to-emerald-600 text-white px-8 py-6 text-lg shadow-xl shadow-sky-500/25 hover:shadow-sky-500/40 transition-all duration-300"
                     onClick={() => window.location.href = '/dashboard'}
                   >
                     Go to Dashboard
@@ -291,7 +291,7 @@ export function Hero() {
                       saved.slice(0, 3).map((s, idx) => (
                         <motion.div 
                           key={s.id} 
-                          className="p-3 rounded-lg bg-gradient-to-r from-sky-50/50 to-emerald-50/50 dark:from-sky-950/20 dark:to-emerald-950/20 border border-sky-200/30 dark:border-sky-800/30 backdrop-blur-sm"
+                          className="p-3 rounded-lg bg-linear-to-r from-sky-50/50 to-emerald-50/50 dark:from-sky-950/20 dark:to-emerald-950/20 border border-sky-200/30 dark:border-sky-800/30 backdrop-blur-sm"
                           initial={{ opacity: 0, x: -20 }}
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ duration: 0.3, delay: idx * 0.1 }}
@@ -325,7 +325,7 @@ export function Hero() {
             >
               <div className="relative">
                 {/* Terminal Window */}
-                <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 rounded-2xl shadow-2xl border border-slate-700/50 dark:border-slate-800/50 overflow-hidden">
+                <div className="bg-linear-to-br from-slate-900 via-slate-800 to-slate-900 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 rounded-2xl shadow-2xl border border-slate-700/50 dark:border-slate-800/50 overflow-hidden">
                   {/* Terminal Header */}
                   <div className="flex items-center justify-between px-6 py-4 bg-slate-800/50 dark:bg-slate-900/50 border-b border-slate-700/50 dark:border-slate-800/50">
                     <div className="flex items-center gap-2">
@@ -473,7 +473,7 @@ export function Hero() {
 
       {/* Features Section with Modern Cards */}
       <section id="features" className="relative py-20 lg:py-32">
-        <div className="absolute inset-0 bg-gradient-to-b from-muted/20 to-background"></div>
+        <div className="absolute inset-0 bg-linear-to-b from-muted/20 to-background"></div>
         
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div 
@@ -484,7 +484,7 @@ export function Hero() {
             transition={{ duration: 0.6 }}
           >
             <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-6">
-              Built for <span className="bg-gradient-to-r from-sky-400 to-emerald-400 bg-clip-text text-transparent">Healthcare</span> Excellence
+              Built for <span className="bg-linear-to-r from-sky-400 to-emerald-400 bg-clip-text text-transparent">Healthcare</span> Excellence
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               Every feature designed with clinical workflows and patient outcomes in mind
@@ -504,9 +504,9 @@ export function Hero() {
                   whileHover={{ y: -5, scale: 1.02 }}
                   className="group"
                 >
-                  <Card className="p-8 bg-gradient-to-br from-card/80 via-card to-card/80 hover:shadow-2xl transition-all duration-500 border border-border/60 backdrop-blur-sm h-full">
+                  <Card className="p-8 bg-linear-to-br from-card/80 via-card to-card/80 hover:shadow-2xl transition-all duration-500 border border-border/60 backdrop-blur-sm h-full">
                     <div className="space-y-4">
-                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-r from-sky-400/10 via-emerald-400/10 to-cyan-400/10 border border-sky-200/20 dark:border-sky-800/20 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                      <div className="w-12 h-12 rounded-2xl bg-linear-to-r from-sky-400/10 via-emerald-400/10 to-cyan-400/10 border border-sky-200/20 dark:border-sky-800/20 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
                         <Icon className="w-6 h-6 text-sky-500 dark:text-sky-400" />
                       </div>
                       <h3 className="text-xl font-semibold text-foreground group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors">

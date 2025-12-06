@@ -10,27 +10,41 @@ import EMRDashboard from './components/dashboard/emr-dashboard'
 import ICD11Sidebar from './components/dashboard/icd11'
 import SettingsPage from './components/dashboard/settings'
 import ReportsPage from './components/dashboard/ReportsPage'
+import PatientsPage from './components/dashboard/PatientsPage'
 import AuthProvider from '@/lib/auth'
+import { SocketProvider } from '@/lib/socket'
 import './index.css'
+import { useAuth } from '@/lib/auth'
+
+// Helper component to provide socket with token
+function AppWithSocket({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth()
+  const token = localStorage.getItem('hs_token') || sessionStorage.getItem('hs_token')
+  
+  // Re-render when user changes (login/logout)
+  return <SocketProvider token={token} key={user?.id || 'anonymous'}>{children}</SocketProvider>
+}
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <BrowserRouter>
       <AuthProvider>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<Signup />} />
+        <AppWithSocket>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
 
-  <Route path="/dashboard" element={<AuthGuard><DashboardLayout /></AuthGuard>}>
-          <Route index element={<EMRDashboard />} />
-          <Route path="icd11" element={<ICD11Sidebar />} />
-          <Route path="patients" element={<ICD11Sidebar />} />
-          <Route path="reports" element={<ReportsPage />} />
-          <Route path="settings" element={<SettingsPage />} />
-        </Route>
+            <Route path="/dashboard" element={<AuthGuard><DashboardLayout /></AuthGuard>}>
+              <Route index element={<EMRDashboard />} />
+              <Route path="icd11" element={<ICD11Sidebar />} />
+              <Route path="patients" element={<PatientsPage />} />
+              <Route path="reports" element={<ReportsPage />} />
+              <Route path="settings" element={<SettingsPage />} />
+            </Route>
 
-      </Routes>
+          </Routes>
+        </AppWithSocket>
       </AuthProvider>
     </BrowserRouter>
   </React.StrictMode>

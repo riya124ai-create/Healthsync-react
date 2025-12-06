@@ -1,10 +1,12 @@
 "use client"
 import { Link, useLocation } from "react-router-dom"
-import { Menu, X, Home, BookOpen, Users, Stethoscope, Settings, Search, LogOut } from "lucide-react"
+import { Menu, X, Home, BookOpen, Users, Stethoscope, Settings, Search, LogOut, Bell, Info, AlertCircle, CheckCircle, UserPlus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "../ui/input"
 import ThemeToggle from "../theme-toggle"
 import { useAuth } from "@/lib/auth"
+import { useState } from "react"
+import type { Notification } from "./NotificationCenter"
 
 function LogoutButton() {
   const { logout } = useAuth()
@@ -24,20 +26,51 @@ function LogoutButton() {
 
 interface SidebarProps {
   open: boolean
-  onToggle: () => void
+  onToggle: () => void,
+  notifications?: Notification[]
+  onClearNotifications?: () => void
+  onRemoveNotification?: (id: string) => void
 }
 
 const menuItems = [
   { href: "/dashboard", label: "Dashboard", icon: Home },
   { href: "/dashboard/icd11", label: "ICD-11 Codes", icon: BookOpen },
   { href: "/dashboard/patients", label: "Patients", icon: Users },
-  { href: "/dashboard/namaste", label: "NAMASTE", icon: Stethoscope },
+  // { href: "/dashboard/namaste", label: "NAMASTE", icon: Stethoscope },
 ]
-
-export default function Sidebar({ open, onToggle }: SidebarProps) {
+const getNotificationIcon = (type: Notification['type']) => {
+    switch (type) {
+      case 'patient-assigned':
+        return <UserPlus className="w-4 h-4" />
+      case 'success':
+        return <CheckCircle className="w-4 h-4" />
+      case 'error':
+        return <AlertCircle className="w-4 h-4" />
+      case 'warning':
+        return <AlertCircle className="w-4 h-4" />
+      default:
+        return <Info className="w-4 h-4" />
+    }
+  }
+  const formatNotificationTime = (date: Date) => {
+    const now = new Date()
+    const diff = now.getTime() - date.getTime()
+    const seconds = Math.floor(diff / 1000)
+    const minutes = Math.floor(seconds / 60)
+    const hours = Math.floor(minutes / 60)
+    
+    if (seconds < 60) return 'Just now'
+    if (minutes < 60) return `${minutes}m ago`
+    if (hours < 24) return `${hours}h ago`
+    return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+  }
+export default function Sidebar({ open, onToggle, notifications = [], onClearNotifications, onRemoveNotification }: SidebarProps) {
+  const [showUserMenu, setShowUserMenu] = useState(false)
+    const [showNotifications, setShowNotifications] = useState(false)
   const location = useLocation()
   const pathname = location.pathname
   const { user } = useAuth()
+  const unreadCount = notifications.length
   const isOrg = user?.role === 'organization'
 
   return (
@@ -81,7 +114,6 @@ export default function Sidebar({ open, onToggle }: SidebarProps) {
               </Link>
             )
           })}
-          {isOrg && (
             <Link key="/dashboard/reports" to="/dashboard/reports">
               <Button
                 variant={pathname === '/dashboard/reports' ? 'default' : 'ghost'}
@@ -96,7 +128,6 @@ export default function Sidebar({ open, onToggle }: SidebarProps) {
                 <span>Reports</span>
               </Button>
             </Link>
-          )}
           <Link to="/dashboard/settings" onClick={onToggle}>
                 <Button
                   variant={pathname === '/dashboard/settings' ? "default" : "ghost"}
@@ -127,11 +158,113 @@ export default function Sidebar({ open, onToggle }: SidebarProps) {
           <Input placeholder="Search patients, codes..." className="pl-10 h-9 bg-input" />
         </div>
         <ThemeToggle />
-        <Link to="/" className="flex items-center gap-3 shrink-0">
-          <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
-            <img src="/logo-white.png" alt="HealthSync" className="w-5 h-5" />
+        {user?.role === 'doctor' && (
+          <div className="relative">
+            <button
+              onClick={() => {
+                setShowNotifications(!showNotifications)
+                setShowUserMenu(false)
+              }}
+              onBlur={() => setTimeout(() => setShowNotifications(false), 200)}
+              aria-label="View notifications"
+              className="relative w-10 h-10 rounded-full bg-muted/50 hover:bg-muted flex items-center justify-center text-foreground transition-all duration-200 hover:scale-105"
+            >
+              <Bell className="w-5 h-5" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center animate-pulse">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </button>
+
+          {/* Notification Dropdown */}
+          {showNotifications && (
+            <div className="absolute right-0 top-full mt-2 w-96 max-h-128 bg-popover/95 backdrop-blur-xl border border-border/50 rounded-lg shadow-2xl shadow-border/10 z-50 overflow-hidden flex flex-col">
+              {/* Header */}
+              <div className="p-4 border-b border-border/50 flex items-center justify-between bg-muted/30">
+                <div>
+                  <h3 className="font-semibold text-sm">Today's Notifications</h3>
+                  <p className="text-xs text-muted-foreground">{unreadCount} notification{unreadCount !== 1 ? 's' : ''}</p>
+                </div>
+                {unreadCount > 0 && onClearNotifications && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onClearNotifications()
+                    }}
+                    className="text-xs text-primary hover:underline"
+                  >
+                    Clear all
+                  </button>
+                )}
+              </div>
+
+              {/* Notification List */}
+              <div className="overflow-y-auto flex-1">
+                {notifications.length === 0 ? (
+                  <div className="p-8 text-center">
+                    <Bell className="w-12 h-12 mx-auto mb-3 text-muted-foreground/50" />
+                    <p className="text-sm text-muted-foreground">No notifications today</p>
+                    <p className="text-xs text-muted-foreground/70 mt-1">You're all caught up!</p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-border/30">
+                    {notifications.map((notification) => (
+                      <div
+                        key={notification.id}
+                        className="p-4 hover:bg-accent/10 transition-colors relative group"
+                      >
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            onRemoveNotification?.(notification.id)
+                          }}
+                          className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-destructive/10 rounded"
+                          aria-label="Dismiss notification"
+                        >
+                          <X className="w-3 h-3 text-muted-foreground hover:text-destructive" />
+                        </button>
+
+                        <div className="flex gap-3 pr-6">
+                          <div className="shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary mt-1">
+                            {getNotificationIcon(notification.type)}
+                          </div>
+                          
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-semibold text-sm mb-1 leading-tight">
+                              {notification.title}
+                            </h4>
+                            <p className="text-sm text-muted-foreground leading-snug mb-2">
+                              {notification.message}
+                            </p>
+
+                            {notification.data?.patientName && (
+                              <div className="flex items-center gap-2 text-xs mb-2">
+                                <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+                                  {notification.data.patientName as string}
+                                </span>
+                                {notification.data.patientAge && (
+                                  <span className="text-muted-foreground">
+                                    Age: {notification.data.patientAge}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+
+                            <div className="text-xs text-muted-foreground/70">
+                              {formatNotificationTime(notification.timestamp)}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
           </div>
-        </Link>
+        )}
       </div>
 
       {open && (
