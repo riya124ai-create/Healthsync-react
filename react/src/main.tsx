@@ -1,6 +1,6 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import ReactDOM from 'react-dom/client'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
 import Home from './components/pages/home'
 import Login from './components/login'
 import Signup from './components/signup'
@@ -13,8 +13,24 @@ import ReportsPage from './components/dashboard/ReportsPage'
 import PatientsPage from './components/dashboard/PatientsPage'
 import AuthProvider from '@/lib/auth'
 import { SocketProvider } from '@/lib/socket'
+import { wakeUpOnPageLoad } from '@/lib/keepAlive'
 import './index.css'
 import { useAuth } from '@/lib/auth'
+
+// Wake up Render backend on initial page load
+wakeUpOnPageLoad()
+
+// Component to wake backend on route changes
+function NavigationWatcher() {
+  const location = useLocation()
+  
+  useEffect(() => {
+    // Wake backend on every route change
+    wakeUpOnPageLoad()
+  }, [location.pathname])
+  
+  return null
+}
 
 // Helper component to provide socket with token
 function AppWithSocket({ children }: { children: React.ReactNode }) {
@@ -30,6 +46,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <BrowserRouter>
       <AuthProvider>
         <AppWithSocket>
+          <NavigationWatcher />
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />

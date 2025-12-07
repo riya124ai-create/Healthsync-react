@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { wakeUpBackend } from './keepAlive'
 
 type User = { id: string; email: string; role?: string; profile?: unknown } | null
 
@@ -83,6 +84,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function login(email: string, password: string, remember = false) {
     const API_BASE = (import.meta.env.VITE_API_URL as string) || 'https://healthsync-fawn.vercel.app'
+    
+    // Wake up backend if it's sleeping (Render free tier)
+    await wakeUpBackend()
+    
     const res = await fetch(`${API_BASE}/api/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) })
     const data = await res.json()
     if (!res.ok) throw new Error(data?.error || 'Login failed')

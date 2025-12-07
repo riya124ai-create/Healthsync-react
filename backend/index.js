@@ -93,7 +93,16 @@ app.use('/api/icd11', icdRouter)
 app.use('/api/patients', patientsRouter)
 app.use('/api/notifications', notificationsRouter)
 
-app.get('/health', (req, res) => res.json({ ok: true }))
+// Health check endpoint for Render and keep-alive pings
+app.get('/health', (req, res) => {
+  res.json({ 
+    ok: true, 
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    socketConnections: userSockets.size
+  })
+})
 
 // Export the app and server for serverless wrappers (Vercel functions) and also allow
 // starting a standalone server when run directly (node index.js)
