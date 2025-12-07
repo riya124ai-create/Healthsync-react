@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth"
-import { Plus, RefreshCw, FileText, Search, User, Calendar, Stethoscope, ChevronDown, ChevronUp } from 'lucide-react'
+import { Plus, RefreshCw, FileText, Search, Calendar, Stethoscope, ChevronDown, ChevronUp } from 'lucide-react'
 import AddDiagnosisModal from "./AddDiagnosisModal"
 
 type Diagnosis = {

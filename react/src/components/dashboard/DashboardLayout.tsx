@@ -13,7 +13,6 @@ export default function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [allNotifications, setAllNotifications] = useState<Notification[]>([]) // Persistent notifications for bell
   const [toastNotifications, setToastNotifications] = useState<Notification[]>([]) // Auto-closing toasts
-  const [loadingNotifications, setLoadingNotifications] = useState(true)
   const { socket, isConnected } = useSocket()
   const { authFetch } = useAuth()
 
@@ -113,7 +112,6 @@ export default function DashboardLayout() {
   useEffect(() => {
     const fetchNotifications = async () => {
       try {
-        setLoadingNotifications(true)
         const response = await authFetch('/api/notifications')
         if (!response.ok) {
           console.error('Failed to fetch notifications:', response.statusText)
@@ -136,8 +134,6 @@ export default function DashboardLayout() {
         console.log(`Loaded ${notifications.length} notifications from database`)
       } catch (error) {
         console.error('Error fetching notifications:', error)
-      } finally {
-        setLoadingNotifications(false)
       }
     }
 

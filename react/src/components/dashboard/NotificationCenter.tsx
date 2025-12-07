@@ -4,6 +4,11 @@ import { useEffect, useState } from 'react'
 import { X, UserPlus, CheckCircle, AlertCircle, Info } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
+type NotificationData = {
+  patientName?: string
+  patientAge?: number
+}
+
 export type Notification = {
   id: string
   type: 'success' | 'info' | 'warning' | 'error' | 'patient-assigned'
@@ -13,7 +18,7 @@ export type Notification = {
   read?: boolean
   autoClose?: boolean
   duration?: number
-  data?: Record<string, unknown>
+  data?: NotificationData
 }
 
 interface NotificationCenterProps {

@@ -9,7 +9,7 @@ import RecentlyAssignedPanel from "./RecentlyAssignedPanel"
 import { Button } from "../ui/button"
 import NewPatientModal from "./NewPatientModal"
 import AddDiagnosisModal from "./AddDiagnosisModal"
-import ReportsModal from "./ReportsModal"
+// import ReportsModal from "./ReportsModal"
 import { useEffect, useState } from "react"
 import { useAuth } from "@/lib/auth"
 
@@ -17,7 +17,6 @@ export default function EMRDashboard() {
   const { user, authFetch } = useAuth()
   const [open, setOpen] = useState(false)
   const [addDiagOpen, setAddDiagOpen] = useState(false)
-  const [viewReports, setViewReports] = useState(false)
   const [selectedPatientForDiag, setSelectedPatientForDiag] = useState<string | undefined>(undefined)
 
   const [orgPatients, setOrgPatients] = useState<Array<{ id: string; name?: string; age?: number; createdAt?: string; createdBy?: string }>>([])
