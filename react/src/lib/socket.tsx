@@ -24,13 +24,12 @@ export const SocketProvider = ({ children, token }: SocketProviderProps) => {
     }
 
     // Connect to Socket.IO server with authentication
-    // For Socket.IO, we need to use the actual backend server, not the API proxy
-    const BACKEND_URL = (import.meta.env.VITE_API_URL as string) || 'http://localhost:4000'
+    // Use Render backend for Socket.IO, separate from Vercel API
+    const SOCKET_URL = (import.meta.env.VITE_SOCKET_URL as string) || (import.meta.env.VITE_API_URL as string) || 'http://localhost:4000'
     
-    console.log('🔌 Connecting to Socket.IO server at:', BACKEND_URL)
-    console.log('🔑 Using token:', token ? 'Token present' : 'No token')
+    console.log('🔌 Connecting to Socket.IO at:', SOCKET_URL)
     
-    const newSocket = io(BACKEND_URL, {
+    const newSocket = io(SOCKET_URL, {
       auth: {
         token,
       },
@@ -42,8 +41,6 @@ export const SocketProvider = ({ children, token }: SocketProviderProps) => {
 
     // Connection event handlers
     newSocket.on('connect', () => {
-      console.log('✅ Connected to HealthSync real-time service')
-      console.log('Socket ID:', newSocket.id)
       setIsConnected(true)
     })
 
@@ -51,14 +48,11 @@ export const SocketProvider = ({ children, token }: SocketProviderProps) => {
       console.log('📨 Server connected message:', data.message)
     })
 
-    newSocket.on('disconnect', (reason) => {
-      console.log('❌ Disconnected from HealthSync real-time service. Reason:', reason)
+    newSocket.on('disconnect', () => {
       setIsConnected(false)
     })
 
-    newSocket.on('connect_error', (error) => {
-      console.error('🚨 Socket connection error:', error.message)
-      console.error('Error details:', error)
+    newSocket.on('connect_error', () => {
       setIsConnected(false)
     })
 

@@ -24,63 +24,75 @@ const server = http.createServer(app)
 const PORT = process.env.PORT || 4000
 const JWT_SECRET = process.env.JWT_SECRET || 'change-this-secret'
 
-// Socket.IO setup with CORS
-const io = new Server(server, {
-  cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
-    methods: ['GET', 'POST'],
-    credentials: true
-  }
-})
+// Socket.IO setup - only enable on Render (not Vercel serverless)
+// Set ENABLE_SOCKETS=true in Render environment variables
+const ENABLE_SOCKETS = process.env.ENABLE_SOCKETS === 'true'
 
-// Store user socket connections: userId -> socketId
-const userSockets = new Map()
+let io = null
+let userSockets = null
 
-// Socket.IO authentication middleware
-io.use((socket, next) => {
-  const token = socket.handshake.auth.token
-  if (!token) {
-    return next(new Error('Authentication error: No token provided'))
-  }
-
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET)
-    socket.userId = decoded.id || decoded.email
-    socket.userEmail = decoded.email
-    socket.userRole = decoded.role
-    next()
-  } catch (err) {
-    next(new Error('Authentication error: Invalid token'))
-  }
-})
-
-// Socket.IO connection handling
-io.on('connection', (socket) => {
-  console.log(`User connected: ${socket.userId} (${socket.userEmail})`)
+if (ENABLE_SOCKETS) {
+  console.log('🔌 Socket.IO enabled - Real-time notifications active')
   
-  // Store user's socket connection
-  userSockets.set(socket.userId, socket.id)
-
-  // Notify user they're connected
-  socket.emit('connected', { 
-    userId: socket.userId,
-    message: 'Successfully connected to HealthSync real-time service'
+  io = new Server(server, {
+    cors: {
+      origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+      methods: ['GET', 'POST'],
+      credentials: true
+    }
   })
 
-  // Handle disconnection
-  socket.on('disconnect', () => {
-    console.log(`User disconnected: ${socket.userId}`)
-    userSockets.delete(socket.userId)
+  // Store user socket connections: userId -> socketId
+  userSockets = new Map()
+
+  // Socket.IO authentication middleware
+  io.use((socket, next) => {
+    const token = socket.handshake.auth.token
+    if (!token) {
+      return next(new Error('Authentication error: No token provided'))
+    }
+
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET)
+      socket.userId = decoded.id || decoded.email
+      socket.userEmail = decoded.email
+      socket.userRole = decoded.role
+      next()
+    } catch (err) {
+      next(new Error('Authentication error: Invalid token'))
+    }
   })
 
-  // Handle patient assignment notification (emitted from API routes)
-  socket.on('patient:assign', (data) => {
-    // This is handled by the API route, but we listen for confirmation
-    socket.emit('patient:assigned:ack', { success: true })
-  })
-})
+  // Socket.IO connection handling
+  io.on('connection', (socket) => {
+    console.log(`User connected: ${socket.userId} (${socket.userEmail})`)
+    
+    // Store user's socket connection
+    userSockets.set(socket.userId, socket.id)
 
-// Make io and userSockets available to routes
+    // Notify user they're connected
+    socket.emit('connected', { 
+      userId: socket.userId,
+      message: 'Successfully connected to HealthSync real-time service'
+    })
+
+    // Handle disconnection
+    socket.on('disconnect', () => {
+      console.log(`User disconnected: ${socket.userId}`)
+      userSockets.delete(socket.userId)
+    })
+
+    // Handle patient assignment notification (emitted from API routes)
+    socket.on('patient:assign', (data) => {
+      // This is handled by the API route, but we listen for confirmation
+      socket.emit('patient:assigned:ack', { success: true })
+    })
+  })
+} else { 
+  console.log('⚠️ Socket.IO disabled - Running in serverless mode (notifications saved to DB only)')
+}
+
+// Make io and userSockets available to routes (will be null if disabled)
 app.set('io', io)
 app.set('userSockets', userSockets)
 
@@ -106,7 +118,8 @@ app.get('/health', (req, res) => {
     status: 'healthy',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
-    socketConnections: userSockets.size
+    socketConnections: userSockets ? userSockets.size : 0,
+    socketEnabled: ENABLE_SOCKETS
   })
 })
 
@@ -120,6 +133,5 @@ if (require.main === module) {
   server.listen(PORT, () => {
     // eslint-disable-next-line no-console
     console.log(`HealthSync backend listening on port ${PORT}`)
-    console.log(`Socket.IO server ready for real-time notifications`)
   })
 }
