@@ -25,7 +25,7 @@ type Patient = {
   createdBy?: string
   assignedDoctorName?: string
   assignedDoctorEmail?: string
-  diagnoses?: Diagnosis[]
+  diagnosis?: Diagnosis[]
   diagnosisCount?: number
 }
 
@@ -36,7 +36,7 @@ export default function PatientsPage() {
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
   const [filterDoctor, setFilterDoctor] = useState<string>("all")
-  const [sortBy, setSortBy] = useState<"name" | "date" | "diagnoses">("date")
+  const [sortBy, setSortBy] = useState<"name" | "date" | "diagnosis">("date")
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc")
   const [expandedPatient, setExpandedPatient] = useState<string | null>(null)
   const [doctorList, setDoctorList] = useState<Array<{ id: string; name?: string; email?: string }>>([])
@@ -68,21 +68,21 @@ export default function PatientsPage() {
             createdBy: userId,
             assignedDoctorName: doctorName,
             assignedDoctorEmail: user?.email,
-            diagnoses: [],
+            diagnosis: [],
             diagnosisCount: 0
           }))
           assignedPatients.forEach(p => patientMap.set(p.id, p))
         }
 
-        // 2. Load all diagnoses by this doctor to find patients they've diagnosed
-        const diagRes = await authFetch('/api/patients/diagnoses')
+        // 2. Load all diagnosis by this doctor to find patients they've diagnosed
+        const diagRes = await authFetch('/api/patients/diagnosis')
         if (diagRes.ok) {
           const diagData = await diagRes.json()
-          const myDiagnoses = diagData.diagnoses || []
+          const myDiagnosis = diagData.diagnosis || []
 
-          // Group diagnoses by patient ID
+          // Group diagnosis by patient ID
           const diagsByPatient = new Map<string, Diagnosis[]>()
-          for (const d of myDiagnoses) {
+          for (const d of myDiagnosis) {
             const patientId = String(d.patientId || d.patient_id || (d.patient && (d.patient.id || d.patient._id)) || '')
             if (!patientId) continue
 
@@ -103,10 +103,10 @@ export default function PatientsPage() {
             diagsByPatient.get(patientId)!.push(diagnosis)
           }
 
-          // For each patient with diagnoses, ensure they're in our map
-          for (const [patientId, diagnoses] of diagsByPatient.entries()) {
+          // For each patient with diagnosis, ensure they're in our map
+          for (const [patientId, diagnosis] of diagsByPatient.entries()) {
             if (!patientMap.has(patientId)) {
-              // Patient not assigned to us but we have diagnoses for them
+              // Patient not assigned to us but we have diagnosis for them
               // Fetch patient info
               try {
                 const pRes = await authFetch(`/api/patients/${patientId}`)
@@ -119,7 +119,7 @@ export default function PatientsPage() {
                     age: p?.age,
                     createdAt: p?.createdAt,
                     createdBy: p?.createdBy,
-                    diagnoses: [],
+                    diagnosis: [],
                     diagnosisCount: 0
                   })
                 }
@@ -128,21 +128,21 @@ export default function PatientsPage() {
                 patientMap.set(patientId, {
                   id: patientId,
                   name: `Patient ${patientId.slice(0, 8)}`,
-                  diagnoses: [],
+                  diagnosis: [],
                   diagnosisCount: 0
                 })
               }
             }
 
-            // Add diagnoses to patient
+            // Add diagnosis to patient
             const patient = patientMap.get(patientId)
             if (patient) {
-              patient.diagnoses = diagnoses.sort((a, b) => {
+              patient.diagnosis = diagnosis.sort((a, b) => {
                 const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0
                 const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0
                 return dateB - dateA
               })
-              patient.diagnosisCount = diagnoses.length
+              patient.diagnosisCount = diagnosis.length
             }
           }
         }
@@ -170,7 +170,7 @@ export default function PatientsPage() {
       }
       setDoctorList(docList)
 
-      // Collect all patients with their diagnoses
+      // Collect all patients with their diagnosis
       const patientMap = new Map<string, Patient>()
 
       for (const doctor of docs) {
@@ -189,16 +189,16 @@ export default function PatientsPage() {
                 createdBy: doctor.id,
                 assignedDoctorName: docMap[doctor.id]?.name,
                 assignedDoctorEmail: docMap[doctor.id]?.email,
-                diagnoses: [],
+                diagnosis: [],
                 diagnosisCount: 0
               })
             }
           }
         }
 
-        // Add diagnoses
-        if (Array.isArray(doctor.diagnoses)) {
-          for (const diag of doctor.diagnoses) {
+        // Add diagnosis
+        if (Array.isArray(doctor.diagnosis)) {
+          for (const diag of doctor.diagnosis) {
             const patientId = String(diag.patientId || diag.patient_id || (diag.patient && (diag.patient.id || diag.patient._id)) || '')
             if (!patientId) continue
 
@@ -215,8 +215,8 @@ export default function PatientsPage() {
 
             const patient = patientMap.get(patientId)
             if (patient) {
-              if (!patient.diagnoses) patient.diagnoses = []
-              patient.diagnoses.push(diagnosis)
+              if (!patient.diagnosis) patient.diagnosis = []
+              patient.diagnosis.push(diagnosis)
               patient.diagnosisCount = (patient.diagnosisCount || 0) + 1
             } else {
               // Patient exists but not in assigned list (might be unassigned or deleted)
@@ -227,7 +227,7 @@ export default function PatientsPage() {
                 createdBy: doctor.id,
                 assignedDoctorName: docMap[doctor.id]?.name,
                 assignedDoctorEmail: docMap[doctor.id]?.email,
-                diagnoses: [diagnosis],
+                diagnosis: [diagnosis],
                 diagnosisCount: 1
               })
             }
@@ -250,7 +250,7 @@ export default function PatientsPage() {
               age: p.age,
               createdAt: p.createdAt,
               createdBy: p.createdBy,
-              diagnoses: [],
+              diagnosis: [],
               diagnosisCount: 0
             })
           }
@@ -259,11 +259,11 @@ export default function PatientsPage() {
         console.warn('Failed to load unassigned patients', e)
       }
 
-      // Sort diagnoses by date (most recent first)
+      // Sort diagnosis by date (most recent first)
       const allPatients = Array.from(patientMap.values())
       allPatients.forEach(patient => {
-        if (patient.diagnoses && patient.diagnoses.length > 0) {
-          patient.diagnoses.sort((a, b) => {
+        if (patient.diagnosis && patient.diagnosis.length > 0) {
+          patient.diagnosis.sort((a, b) => {
             const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0
             const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0
             return dateB - dateA
@@ -295,7 +295,7 @@ export default function PatientsPage() {
         p.id.toLowerCase().includes(query) ||
         (p.assignedDoctorName || '').toLowerCase().includes(query) ||
         (p.assignedDoctorEmail || '').toLowerCase().includes(query) ||
-        p.diagnoses?.some(d => 
+        p.diagnosis?.some(d => 
           (d.disease || '').toLowerCase().includes(query) ||
           (d.icd11 || '').toLowerCase().includes(query) ||
           (d.notes || '').toLowerCase().includes(query)
@@ -322,7 +322,7 @@ export default function PatientsPage() {
           compareValue = dateA - dateB
           break
         }
-        case "diagnoses":
+        case "diagnosis":
           compareValue = (a.diagnosisCount || 0) - (b.diagnosisCount || 0)
           break
       }
@@ -338,7 +338,7 @@ export default function PatientsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [patients, searchQuery, filterDoctor, sortBy, sortOrder])
 
-  function toggleSort(field: "name" | "date" | "diagnoses") {
+  function toggleSort(field: "name" | "date" | "diagnosis") {
     if (sortBy === field) {
       setSortOrder(sortOrder === "asc" ? "desc" : "asc")
     } else {
@@ -361,8 +361,8 @@ export default function PatientsPage() {
           </h1>
           <p className="text-muted-foreground mt-1">
             {role === 'doctor' 
-              ? 'View your patients and the diagnoses you\'ve provided' 
-              : 'View all patients and their diagnoses across your organization'}
+              ? 'View your patients and the diagnosis you\'ve provided' 
+              : 'View all patients and their diagnosis across your organization'}
           </p>
         </div>
         <Button onClick={() => setNewPatientOpen(true)} className="flex items-center gap-2">
@@ -390,7 +390,7 @@ export default function PatientsPage() {
               <Stethoscope className="h-5 w-5 text-green-600" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">{role === 'doctor' ? 'My Diagnoses' : 'Total Diagnoses'}</p>
+              <p className="text-sm text-muted-foreground">{role === 'doctor' ? 'My Diagnosis' : 'Total Diagnosis'}</p>
               <p className="text-2xl font-bold">{patients.reduce((sum, p) => sum + (p.diagnosisCount || 0), 0)}</p>
             </div>
           </div>
@@ -417,7 +417,7 @@ export default function PatientsPage() {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input
               type="text"
-              placeholder={role === 'doctor' ? "Search patients or diagnoses..." : "Search patients, doctors, or diagnoses..."}
+              placeholder={role === 'doctor' ? "Search patients or diagnosis..." : "Search patients, doctors, or diagnosis..."}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-border rounded-md bg-background"
@@ -473,11 +473,11 @@ export default function PatientsPage() {
                   )}
                   <th className="px-4 py-3 text-left">
                     <button
-                      onClick={() => toggleSort("diagnoses")}
+                      onClick={() => toggleSort("diagnosis")}
                       className="flex items-center gap-1 font-semibold text-sm hover:text-primary transition-colors"
                     >
-                      Diagnoses
-                      {sortBy === "diagnoses" && (sortOrder === "asc" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />)}
+                      Diagnosis
+                      {sortBy === "diagnosis" && (sortOrder === "asc" ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />)}
                     </button>
                   </th>
                   <th className="px-4 py-3 text-left">
@@ -516,7 +516,7 @@ export default function PatientsPage() {
                       )}
                       <td className="px-4 py-3">
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
-                          {patient.diagnosisCount || 0} {(patient.diagnosisCount || 0) === 1 ? 'diagnosis' : 'diagnoses'}
+                          {patient.diagnosisCount || 0} {(patient.diagnosisCount || 0) === 1 ? 'diagnosis' : 'diagnosis'}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-sm text-muted-foreground">
@@ -541,7 +541,7 @@ export default function PatientsPage() {
                         )}
                       </td>
                     </tr>
-                    {expandedPatient === patient.id && patient.diagnoses && patient.diagnoses.length > 0 && (
+                    {expandedPatient === patient.id && patient.diagnosis && patient.diagnosis.length > 0 && (
                       <tr key={`${patient.id}-expanded`}>
                         <td colSpan={role === 'organization' ? 6 : 5} className="px-4 py-4 bg-muted/20">
                           <div className="space-y-3">
@@ -550,7 +550,7 @@ export default function PatientsPage() {
                               Diagnosis History
                             </h4>
                             <div className="space-y-2">
-                              {patient.diagnoses.map((diagnosis, idx) => (
+                              {patient.diagnosis.map((diagnosis, idx) => (
                                 <div
                                   key={diagnosis.id || idx}
                                   className="p-3 rounded-lg bg-card border border-border"

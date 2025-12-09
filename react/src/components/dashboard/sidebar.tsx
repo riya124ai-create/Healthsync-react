@@ -80,12 +80,12 @@ export default function Sidebar({ open, onToggle, notifications = [], onClearNot
           open ? "translate-x-0" : "-translate-x-64"
         } overflow-hidden transition-all duration-300 ease-out will-change-transform shadow-2xl shadow-sidebar-border/10`}
       >
-        <div className="p-6 border-b border-sidebar-border/50 bg-gradient-to-r from-sidebar to-sidebar/80">
+        <div className="p-6 border-b border-sidebar-border/50 bg-linear-to-r from-sidebar to-sidebar/80">
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary via-primary/90 to-primary/80 flex items-center justify-center shadow-lg">
+            <div className="w-8 h-8 rounded-lg bg-linear-to-br from-primary via-primary/90 to-primary/80 flex items-center justify-center shadow-lg">
               <Stethoscope className="w-4 h-4 text-white" />
             </div>
-            <h1 className="text-xl font-bold text-sidebar-foreground bg-gradient-to-r from-sidebar-foreground via-sidebar-foreground/90 to-sidebar-foreground/80 bg-clip-text">HealthSync</h1>
+            <h1 className="text-xl font-bold text-sidebar-foreground bg-linear-to-r from-sidebar-foreground via-sidebar-foreground/90 to-sidebar-foreground/80 bg-clip-text">HealthSync</h1>
           </div>
           <p className="text-xs text-sidebar-foreground/70 font-medium tracking-wide">Clinical Management Platform</p>
         </div>
@@ -101,7 +101,7 @@ export default function Sidebar({ open, onToggle, notifications = [], onClearNot
                   variant={isActive ? "default" : "ghost"}
                   className={`w-full justify-start gap-3 h-11 text-sm font-medium transition-all duration-200 group ${
                     isActive
-                      ? "bg-gradient-to-r from-sidebar-primary to-sidebar-primary/90 text-sidebar-primary-foreground shadow-lg shadow-sidebar-primary/20"
+                      ? "bg-linear-to-r from-sidebar-primary to-sidebar-primary/90 text-sidebar-primary-foreground shadow-lg shadow-sidebar-primary/20"
                       : "text-sidebar-foreground/80 hover:text-sidebar-foreground hover:bg-sidebar-accent/10 hover:shadow-sm"
                   }`}
                 >
@@ -118,7 +118,7 @@ export default function Sidebar({ open, onToggle, notifications = [], onClearNot
                 variant={pathname === '/dashboard/reports' ? 'default' : 'ghost'}
                 className={`w-full justify-start gap-3 h-11 text-sm font-medium transition-all duration-200 group ${
                   pathname === '/dashboard/reports' 
-                    ? 'bg-gradient-to-r from-sidebar-primary to-sidebar-primary/90 text-sidebar-primary-foreground shadow-lg shadow-sidebar-primary/20' 
+                    ? 'bg-linear-to-r from-sidebar-primary to-sidebar-primary/90 text-sidebar-primary-foreground shadow-lg shadow-sidebar-primary/20' 
                     : 'text-sidebar-foreground/80 hover:text-sidebar-foreground hover:bg-sidebar-accent/10 hover:shadow-sm'
                 }`}>
                 <BookOpen className={`w-5 h-5 transition-transform duration-200 ${
@@ -127,7 +127,7 @@ export default function Sidebar({ open, onToggle, notifications = [], onClearNot
                 <span>Reports</span>
               </Button>
             </Link>
-          <Link to="/dashboard/settings" onClick={onToggle}>
+          <Link to="/dashboard/settings">
                 <Button
                   variant={pathname === '/dashboard/settings' ? "default" : "ghost"}
                   className={`w-full justify-start gap-3 ${

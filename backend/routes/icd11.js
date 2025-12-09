@@ -3,8 +3,7 @@ const fetch = globalThis.fetch || require('node-fetch')
 
 const router = express.Router()
 
-// Proxy search to NLM ClinicalTables ICD-11 endpoint to avoid CORS issues
-// GET /api/icd11/search?terms=...&maxList=15
+
 router.get('/search', async (req, res) => {
   try {
     const terms = req.query.terms || ''

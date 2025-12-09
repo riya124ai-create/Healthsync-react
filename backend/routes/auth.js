@@ -98,12 +98,89 @@ router.get('/me', async (req, res) => {
   }
 })
 
+router.put('/me', async (req, res) => {
+  try {
+    const auth = req.get('authorization')
+    let token = null
+    if (auth && auth.startsWith('Bearer ')) token = auth.split(' ')[1]
+    if (!token) return res.status(401).json({ error: 'missing token' })
+
+    let data
+    try {
+      data = jwt.verify(token, JWT_SECRET)
+    } catch (err) {
+      return res.status(401).json({ error: 'invalid token' })
+    }
+
+    let user = await findById(data.id)
+    if (!user && data.email) user = await findByEmail(data.email)
+    if (!user) return res.status(404).json({ error: 'user not found' })
+
+    const db = await getDb()
+    if (!db) return res.status(503).json({ error: 'database unavailable' })
+
+    const updates = req.body || {}
+    const updateFields = {}
+
+    // Handle email update
+    if (updates.email && updates.email !== user.email) {
+      // Check if new email is already taken
+      const existing = await findByEmail(updates.email)
+      if (existing && existing.id !== user.id) {
+        return res.status(409).json({ error: 'email already in use' })
+      }
+      updateFields.email = updates.email
+    }
+
+    const profileUpdates = {}
+    
+    if (user.role === 'organization' && updates.admin !== undefined) {
+      profileUpdates.admin = updates.admin
+    } else if (updates.name !== undefined) {
+      profileUpdates.name = updates.name
+    }
+    if (updates.specialty !== undefined) profileUpdates.specialty = updates.specialty
+    if (updates.organizationId !== undefined) profileUpdates.organizationId = updates.organizationId
+
+    if (Object.keys(profileUpdates).length > 0) {
+      updateFields.profile = { ...(user.profile || {}), ...profileUpdates }
+    }
+
+    if (Object.keys(updateFields).length === 0) {
+      return res.json({ user: { id: user.id, email: user.email, role: user.role, profile: user.profile } })
+    }
+
+    const usersCol = db.collection('users')
+    let filter
+    try {
+      filter = { _id: new (require('mongodb').ObjectId)(user.id) }
+    } catch (e) {
+      filter = { id: user.id }
+    }
+
+    await usersCol.updateOne(filter, { $set: { ...updateFields, updatedAt: new Date() } })
+
+    const updatedUser = await findById(user.id)
+    if (!updatedUser) return res.status(500).json({ error: 'failed to retrieve updated user' })
+
+    return res.json({ 
+      user: { 
+        id: updatedUser.id, 
+        email: updatedUser.email, 
+        role: updatedUser.role, 
+        profile: updatedUser.profile 
+      } 
+    })
+  } catch (err) {
+    console.error('update profile error', err)
+    return res.status(500).json({ error: 'failed to update profile' })
+  }
+})
+
 router.post('/logout', async (req, res) => {
-  // no-op for token-based logout; return ok
   return res.json({ ok: true })
 })
 
-// Google Sign-in: verify id_token, require PIN for Google sign-ins
 router.post('/google', async (req, res) => {
   try {
     const { credential, pin, setPinForFuture } = req.body || {}
@@ -148,7 +225,6 @@ router.post('/google', async (req, res) => {
     if (userDoc) {
       // existing user: check if google PIN hash exists
       const savedHash = (userDoc.profile && userDoc.profile.googlePinHash) || null
-      // If no PIN provided, return status indicating whether a PIN is already set
       if (!pin) {
         return res.json({ needPin: true, hasPin: !!savedHash })
       }
@@ -165,7 +241,7 @@ router.post('/google', async (req, res) => {
       if (!setPinForFuture) return res.status(400).json({ error: 'PIN required to enable Google sign-in for this account' })
       const salt = await bcrypt.genSalt(10)
       const hash = await bcrypt.hash(String(pin), salt)
-      // update profile.googlePinHash
+
       try {
         if (usersCol) {
           await usersCol.updateOne({ email }, { $set: { 'profile.googlePinHash': hash, 'profile.googleSub': g.sub } })
@@ -211,24 +287,20 @@ router.post('/google', async (req, res) => {
   }
 })
 
-// Forgot password - Send OTP
+
 router.post('/forgot-password', async (req, res) => {
   try {
     const { email } = req.body || {}
     if (!email) return res.status(400).json({ error: 'email required' })
 
-    // Check if user exists
     const user = await findByEmail(email)
     if (!user) {
-      // Don't reveal if email exists or not for security
-      return res.json({ message: 'If the email exists, an OTP has been sent' })
+      return res.json({ message: 'Email unverified' })
     }
 
-    // Generate 6-digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString()
     const otpExpiry = new Date(Date.now() + 10 * 60 * 1000) // 10 minutes
 
-    // Save OTP to database
     const db = await getDb()
     if (db) {
       await db.collection('password_resets').insertOne({
@@ -240,12 +312,8 @@ router.post('/forgot-password', async (req, res) => {
       })
     }
 
-    // Send email with OTP
     const nodemailer = require('nodemailer')
     
-    // Configure email transporter
-    console.log('EMAIL_USER:', process.env.EMAIL_USER);
-    console.log('EMAIL_PASSWORD:', process.env.EMAIL_PASSWORD);
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
@@ -283,7 +351,6 @@ router.post('/forgot-password', async (req, res) => {
   }
 })
 
-// Verify OTP and reset password
 router.post('/reset-password', async (req, res) => {
   try {
     const { email, otp, newPassword } = req.body || {}
@@ -310,16 +377,14 @@ router.post('/reset-password', async (req, res) => {
     const user = await findByEmail(email)
     if (!user) return res.status(404).json({ error: 'User not found' })
 
-    // Hash new password
     const passwordHash = await bcrypt.hash(newPassword, 10)
 
-    // Update password
     await db.collection('users').updateOne(
       { email },
       { $set: { passwordHash, updatedAt: new Date() } }
     )
 
-    // Mark OTP as used
+    // markk OTP as used
     await db.collection('password_resets').updateOne(
       { _id: resetRequest._id },
       { $set: { used: true, usedAt: new Date() } }

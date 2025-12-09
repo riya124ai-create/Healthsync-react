@@ -172,7 +172,7 @@ export default function RecentlyAssignedPanel({ onWriteDiagnosis }: RecentlyAssi
             className="p-2.5 rounded-lg bg-card border border-border hover:border-blue-300/50 hover:shadow-sm transition-all group"
           >
             <div className="flex items-start gap-2.5">
-              <div className="w-9 h-9 rounded-lg bg-linear-to-br from-blue-500/10 to-indigo-500/10 flex items-center justify-center font-semibold text-xs text-blue-600 flex-shrink-0">
+              <div className="w-9 h-9 rounded-lg bg-linear-to-br from-blue-500/10 to-indigo-500/10 flex items-center justify-center font-semibold text-xs text-blue-600 shrink-0">
                 {(patient.name || patient.id || '').slice(0, 2).toUpperCase()}
               </div>
               

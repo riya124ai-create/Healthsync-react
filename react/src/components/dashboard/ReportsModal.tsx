@@ -49,10 +49,10 @@ export default function ReportsModal({ open, onClose }: { open: boolean; onClose
     setLoading(true)
     ;(async () => {
       try {
-        const res = await authFetch('/api/patients/diagnoses')
+        const res = await authFetch('/api/patients/diagnosis')
         if (!res.ok) throw new Error('failed to load reports')
         const data = await res.json()
-        if (!cancelled) setReports(data.diagnoses || [])
+        if (!cancelled) setReports(data.diagnosis || [])
       } catch (err) {
         console.error('load reports error', err)
         if (!cancelled) setReports([])

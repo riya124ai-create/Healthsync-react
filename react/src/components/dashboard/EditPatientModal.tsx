@@ -112,17 +112,17 @@ export default function EditPatientModal({ open, onClose, patient, onSaved, onRe
     }
   }, [query])
 
-  // When opening the modal, attempt to fetch the patient's diagnoses
+  // When opening the modal, attempt to fetch the patient's diagnosis
   // and prefer the most recent diagnosis as the default disease value.
   useEffect(() => {
     let cancelled = false
     if (!patient) return
     ;(async () => {
       try {
-        const res = await authFetch('/api/patients/diagnoses')
+        const res = await authFetch('/api/patients/diagnosis')
         if (!res.ok) return
         const body = await res.json()
-        const list: Array<any> = Array.isArray(body.diagnoses) ? body.diagnoses : body.diagnoses || []
+        const list: Array<any> = Array.isArray(body.diagnosis) ? body.diagnosis : body.diagnosis || []
         const matches = list.filter(d => String(d.patientId) === String(patient.id))
         if (matches.length === 0) return
         matches.sort((a, b) => {

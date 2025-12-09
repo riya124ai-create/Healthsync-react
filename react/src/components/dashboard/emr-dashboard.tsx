@@ -1,17 +1,19 @@
 "use client"
-import { Plus, Users, UserCheck, UserX, Activity, Search, Calendar } from "lucide-react"
+import { Plus, Users, UserCheck, UserX, Activity, Search, Calendar, RefreshCw, BarChart3 } from "lucide-react"
 import { Card } from "@/components/ui/card"
 // import StatCard from "./stat-card"
-import RecentPatients from "./recent-patients"
-import IntegrationStatus from "./integration-status"
+import RecentPatients from "./RecentPatients"
+import IntegrationStatus from "./RecentDiagnosis"
 import OrgDoctorsPanel from "./OrgDoctorsPanel"
 import RecentlyAssignedPanel from "./RecentlyAssignedPanel"
 import NewPatientModal from "./NewPatientModal"
 import AddDiagnosisModal from "./AddDiagnosisModal"
+import AnalyticsTab from "./AnalyticsTab"
 // import ReportsModal from "./ReportsModal"
 import { useEffect, useState } from "react"
 import { useAuth } from "@/lib/auth"
 import { useSocket } from "@/lib/socketContext"
+import { Button } from "../ui/button"
 
 export default function EMRDashboard() {
   const { user, authFetch } = useAuth()
@@ -30,6 +32,8 @@ export default function EMRDashboard() {
   const [assignDoctorId, setAssignDoctorId] = useState<string | undefined>(undefined)
   const [assigning, setAssigning] = useState(false)
   const [connectedDoctors, setConnectedDoctors] = useState<string[]>([])
+  const [loading, setLoading] = useState(false)
+  const [activeTab, setActiveTab] = useState<'overview' | 'analytics'>('overview')
 
   const role = user?.role || 'doctor'
   const { socket } = useSocket()
@@ -156,6 +160,7 @@ export default function EMRDashboard() {
 
   async function loadOrgData() {
     if (!orgId) return
+    setLoading(true);
     try {
       const res = await authFetch(`/api/organizations/${orgId}/doctors`)
       if (!res.ok) throw new Error('failed')
@@ -187,15 +192,15 @@ export default function EMRDashboard() {
       setDoctorMap(map)
       setDoctorList(list)
       setOrgPatients(patients)
-      // Load latest diagnoses for organization patients and map by patient id
+      // Load latest diagnosis for organization patients and map by patient id
         // Build latest diagnosis map from the doctors payload we already received.
-        // The organizations route includes a `diagnoses` array per doctor (diagnoses authored by that doctor across patients).
+        // The organizations route includes a `diagnosis` array per doctor (diagnosis authored by that doctor across patients).
         try {
           const map: Record<string, any> = {}
           for (const p of patients) map[String(p.id)] = null
 
           for (const d of docs) {
-            const diagList = Array.isArray(d.diagnoses) ? d.diagnoses : []
+            const diagList = Array.isArray(d.diagnosis) ? d.diagnosis : []
             for (const diag of diagList) {
               const pid = String(diag.patientId || diag.patient_id || (diag.patient && (diag.patient.id || diag.patient._id)) || '')
               if (!pid) continue
@@ -208,8 +213,9 @@ export default function EMRDashboard() {
             }
           }
           setLatestByPatient(map)
+          setLoading(false);
         } catch (e) {
-          console.debug('failed to map org diagnoses', e)
+          console.debug('failed to map org diagnosis', e)
           setLatestByPatient({})
         }
     } catch (err) {
@@ -251,6 +257,46 @@ export default function EMRDashboard() {
           </div>
         </div>
 
+        {/* Tab Navigation */}
+        <div className="flex items-center gap-2 border-b border-border">
+          <button
+            onClick={() => setActiveTab('overview')}
+            className={`px-4 py-2 font-medium text-sm transition-colors relative ${
+              activeTab === 'overview'
+                ? 'text-primary'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <Activity className="w-4 h-4" />
+              Overview
+            </div>
+            {activeTab === 'overview' && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
+            )}
+          </button>
+          <button
+            onClick={() => setActiveTab('analytics')}
+            className={`px-4 py-2 font-medium text-sm transition-colors relative ${
+              activeTab === 'analytics'
+                ? 'text-primary'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <BarChart3 className="w-4 h-4" />
+              Analytics
+            </div>
+            {activeTab === 'analytics' && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
+            )}
+          </button>
+        </div>
+
+        {activeTab === 'analytics' ? (
+          <AnalyticsTab orgId={orgId} />
+        ) : (
+        <>
         {/* Statistics Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <Card className="p-6 bg-linear-to-br from-blue-50 to-blue-100/50 dark:from-blue-950/30 dark:to-blue-900/20 border-blue-200/50 dark:border-blue-800/50">
@@ -314,6 +360,9 @@ export default function EMRDashboard() {
                   <h3 className="text-xl font-bold text-foreground">Patient Directory</h3>
                 </div>
                 <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={() => loadOrgData()} disabled={loading} aria-label="Refresh patients" className="shadow-sm hover:shadow-md transition-shadow">
+                    <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                  </Button>
                   <button
                     onClick={() => { setOpen(true); setShowAllPatients(true) }}
                     className="p-2 rounded-lg border border-primary/20 bg-primary/5 text-primary hover:bg-primary/10 transition-colors"
@@ -446,6 +495,8 @@ export default function EMRDashboard() {
             <OrgDoctorsPanel orgId={orgId} />
           </div>
         </div>
+        </>
+        )}
         {assignOpen && assignPatient && (
           <div className="fixed inset-0 z-50 overflow-y-auto">
             <div className="fixed inset-0 bg-black/50" onClick={() => { setAssignOpen(false); setAssignPatient(null); setAssignDoctorId(undefined) }} />
@@ -456,7 +507,7 @@ export default function EMRDashboard() {
               <div className="space-y-3">
                 <label className="block text-sm mb-1">Doctor</label>
                 <select value={assignDoctorId ?? ''} onChange={(e) => setAssignDoctorId(e.target.value || undefined)} className="w-full px-3 py-2 rounded-md border border-border bg-input">
-                  <option value="">Select a doctor</option>
+                  <option value="">Unassign patient</option>
                   {doctorList.map(d => (
                     <option key={d.id} value={d.id}>{d.name || d.email || d.id}</option>
                   ))}
@@ -468,16 +519,15 @@ export default function EMRDashboard() {
                     className="px-3 py-2 rounded-md bg-primary text-primary-foreground"
                     onClick={async () => {
                       if (!assignPatient) return
-                      if (!assignDoctorId) { alert('Please select a doctor'); return }
                       setAssigning(true)
                       try {
-                        const res = await authFetch(`/api/organizations/${orgId}/patients/${assignPatient.id}/assign`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ doctorId: assignDoctorId }) })
+                        const res = await authFetch(`/api/organizations/${orgId}/patients/${assignPatient.id}/assign`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ doctorId: assignDoctorId || null }) })
                         if (!res.ok) {
                           const txt = await res.text().catch(() => '')
                           throw new Error(txt || 'Assign failed')
                         }
                         // update local table immediately
-                        setOrgPatients(prev => prev.map(p => p.id === assignPatient.id ? { ...p, createdBy: assignDoctorId } : p))
+                        setOrgPatients(prev => prev.map(p => p.id === assignPatient.id ? { ...p, createdBy: assignDoctorId || undefined } : p))
                         // notify other listeners (keeps views in sync)
                         try { window.dispatchEvent(new CustomEvent('orgPatientAssigned', { detail: { patientId: assignPatient.id, doctorId: assignDoctorId } })) } catch (e) { console.debug(e) }
                         setAssignOpen(false)

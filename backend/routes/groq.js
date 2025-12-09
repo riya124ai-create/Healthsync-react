@@ -1,8 +1,6 @@
 const express = require('express')
 const router = express.Router()
 
-// POST /api/gemini/disease-info
-// Generate comprehensive disease information using Groq Llama AI
 router.post('/disease-info', async (req, res) => {
   try {
     const { icdCode, diseaseName } = req.body

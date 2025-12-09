@@ -122,7 +122,7 @@ export function Login() {
 			}
 		}
 
-		// load the Google Identity Services library
+		// load the Google Identity Services library if not already loaded
 		if (!(window as any).google) {
 			const s = document.createElement('script')
 			s.src = 'https://accounts.google.com/gsi/client'

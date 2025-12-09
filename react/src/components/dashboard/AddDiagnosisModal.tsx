@@ -179,7 +179,7 @@ export default function AddDiagnosisModal({ open, onClose, onAdded, preSelectedP
       }
 
       const payload = { icd11: icd11, disease, notes }
-      const res = await authFetch(`/api/patients/${targetPatientId}/diagnoses`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+      const res = await authFetch(`/api/patients/${targetPatientId}/diagnosis`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
       if (!res.ok) throw new Error('failed to add diagnosis')
       
       // Delete the patient assignment notification

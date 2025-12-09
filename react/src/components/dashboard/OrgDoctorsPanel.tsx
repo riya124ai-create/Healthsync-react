@@ -1,8 +1,9 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState, useRef } from "react"
 import { Button } from "../ui/button"
 import { useAuth } from "@/lib/auth"
+import { ChevronUp, ChevronDown } from "lucide-react"
 // inline org new-patient modal used instead of importing the full NewPatientModal
 
 type Profile = { name?: string }
@@ -29,7 +30,7 @@ type Doctor = {
   email?: string
   profile?: Profile
   patients?: Patient[]
-  diagnoses?: Diagnosis[]
+  diagnosis?: Diagnosis[]
 }
 
 export default function OrgDoctorsPanel({ orgId }: { orgId: string | null }) {
@@ -55,6 +56,18 @@ export default function OrgDoctorsPanel({ orgId }: { orgId: string | null }) {
   }, [doctors, query])
   const [selectedDoctorId, setSelectedDoctorId] = useState<string | null>(null)
   const [openDiagnosisIds, setOpenDiagnosisIds] = useState<Record<string, boolean>>({})
+
+  // Scroll indicators state for diagnosis lists
+  const [scrollStates, setScrollStates] = useState<Record<string, { canScrollUp: boolean; canScrollDown: boolean }>>({})
+  const scrollRefs = useRef<Record<string, HTMLDivElement | null>>({})
+
+  const handleScroll = (key: string) => {
+    const el = scrollRefs.current[key]
+    if (!el) return
+    const canScrollUp = el.scrollTop > 5
+    const canScrollDown = el.scrollTop < el.scrollHeight - el.clientHeight - 5
+    setScrollStates(prev => ({ ...prev, [key]: { canScrollUp, canScrollDown } }))
+  }
 
   const toggleDiagnosis = (id?: string) => {
     if (!id) return
@@ -181,8 +194,8 @@ export default function OrgDoctorsPanel({ orgId }: { orgId: string | null }) {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
             {filtered.map((d) => {
           const patientsCount = d.patients ? d.patients.length : 0
-          const diagnosesCount = d.diagnoses ? d.diagnoses.length : 0
-          const lastDiagnosis = (d.diagnoses || []).reduce<string | null>((acc, cur) => {
+          const DiagnosisCount = d.diagnosis ? d.diagnosis.length : 0
+          const lastDiagnosis = (d.diagnosis || []).reduce<string | null>((acc, cur) => {
             if (!cur?.createdAt) return acc
             if (!acc) return cur.createdAt
             return new Date(cur.createdAt) > new Date(acc) ? cur.createdAt : acc
@@ -274,7 +287,7 @@ export default function OrgDoctorsPanel({ orgId }: { orgId: string | null }) {
                   </div>
                   <div className="text-right sm:text-right">
                     <div className="text-sm font-medium">{patientsCount} patients</div>
-                    <div className="text-xs text-muted-foreground">{diagnosesCount} diagnoses</div>
+                    <div className="text-xs text-muted-foreground">{DiagnosisCount} diagnosis</div>
                   </div>
                 </div>
 
@@ -305,10 +318,22 @@ export default function OrgDoctorsPanel({ orgId }: { orgId: string | null }) {
                   <div className="mt-3 border-t border-border pt-3 space-y-3">
 
                     <div>
-                      <h4 className="text-sm font-medium">Recent Diagnoses ({diagnosesCount})</h4>
-                      {d.diagnoses && d.diagnoses.length > 0 ? (
-                        <ul className="mt-2 space-y-2 text-sm max-h-48 overflow-auto">
-                          {d.diagnoses.slice(0, 6).map((r: Diagnosis) => (
+                      <h4 className="text-sm font-medium">Recent Diagnosis ({DiagnosisCount})</h4>
+                      {d.diagnosis && d.diagnosis.length > 0 ? (
+                        <div className="relative mt-2">
+                          {scrollStates[`diagnosis-${d.id}`]?.canScrollUp && (
+                            <div className="absolute top-0 left-0 right-0 h-8 bg-linear-to-b from-card to-transparent z-10 flex items-start justify-center pointer-events-none">
+                              <ChevronUp className="w-5 h-5 text-primary" />
+                            </div>
+                          )}
+                          <div
+                            ref={(el) => { scrollRefs.current[`diagnosis-${d.id}`] = el }}
+                            className="max-h-48 overflow-auto space-y-2 text-sm"
+                            style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+                            onScroll={() => handleScroll(`diagnosis-${d.id}`)}
+                          >
+                        <ul className="space-y-2">
+                          {d.diagnosis.slice(0, 6).map((r: Diagnosis) => (
                             <li
                               key={r.id}
                               className="p-2 border border-border rounded-md cursor-pointer"
@@ -334,7 +359,14 @@ export default function OrgDoctorsPanel({ orgId }: { orgId: string | null }) {
                             </li>
                           ))}
                         </ul>
-                      ) : <div className="text-sm text-muted-foreground">No diagnoses</div>}
+                          </div>
+                          {scrollStates[`diagnosis-${d.id}`]?.canScrollDown && (
+                            <div className="absolute bottom-0 left-0 right-0 h-8 bg-linear-to-t from-card to-transparent z-10 flex items-end justify-center pointer-events-none">
+                              <ChevronDown className="w-5 h-5 text-primary" />
+                            </div>
+                          )}
+                        </div>
+                      ) : <div className="text-sm text-muted-foreground">No diagnosis</div>}
                     </div>
                   </div>
                 )}
@@ -352,7 +384,7 @@ export default function OrgDoctorsPanel({ orgId }: { orgId: string | null }) {
                 const doc = doctors.find(x => x.id === selectedDoctorId) as Doctor | undefined
                 if (!doc) return <div className="text-sm text-muted-foreground">Doctor not found.</div>
                 const patientsCount = doc.patients ? doc.patients.length : 0
-                const diagnosesCount = doc.diagnoses ? doc.diagnoses.length : 0
+                const DiagnosisCount = doc.diagnosis ? doc.diagnosis.length : 0
                 return (
                   <div className="border border-border rounded-lg p-4 bg-background">
                     <div className="flex items-center gap-3">
@@ -371,13 +403,25 @@ export default function OrgDoctorsPanel({ orgId }: { orgId: string | null }) {
                         <div className="text-sm font-medium">{patientsCount}</div>
                       </div>
                       <div>
-                        <div className="text-xs text-muted-foreground">Diagnoses</div>
-                        <div className="text-sm font-medium">{diagnosesCount}</div>
+                        <div className="text-xs text-muted-foreground">Diagnosis</div>
+                        <div className="text-sm font-medium">{DiagnosisCount}</div>
                       </div>
                       <div>
                         <div className="text-xs text-muted-foreground">Recent</div>
-                        <div className="mt-2 space-y-2 max-h-64 overflow-y-scroll" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
-                          {(doc.diagnoses || []).slice(0, 10).map((r) => (
+                        <div className="relative mt-2">
+                          {scrollStates[`modal-diagnosis-${doc.id}`]?.canScrollUp && (
+                            <div className="absolute top-0 left-0 right-0 h-8 bg-linear-to-b from-card to-transparent z-10 flex items-start justify-center pointer-events-none">
+                              <ChevronUp className="w-5 h-5 text-primary" />
+                            </div>
+                          )}
+                          <div
+                            ref={(el) => { scrollRefs.current[`modal-diagnosis-${doc.id}`] = el }}
+                            className="max-h-64 overflow-auto space-y-2"
+                            style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+                            onScroll={() => handleScroll(`modal-diagnosis-${doc.id}`)}
+                          >
+                        <div className="space-y-2">
+                          {(doc.diagnosis || []).slice(0, 10).map((r) => (
                             <div
                               key={r.id}
                               className="p-2 border border-border rounded-md cursor-pointer"
@@ -402,6 +446,13 @@ export default function OrgDoctorsPanel({ orgId }: { orgId: string | null }) {
                               )}
                             </div>
                           ))}
+                        </div>
+                          </div>
+                          {scrollStates[`modal-diagnosis-${doc.id}`]?.canScrollDown && (
+                            <div className="absolute bottom-0 left-0 right-0 h-8 bg-linear-to-t from-card to-transparent z-10 flex items-end justify-center pointer-events-none">
+                              <ChevronDown className="w-5 h-5 text-primary" />
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>

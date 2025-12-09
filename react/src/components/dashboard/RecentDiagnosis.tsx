@@ -20,22 +20,22 @@ type Diagnosis = {
 
 export default function IntegrationStatus() {
   const { authFetch } = useAuth()
-  const [diagnoses, setDiagnoses] = useState<Diagnosis[]>([])
+  const [diagnosis, setDiagnosis] = useState<Diagnosis[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState("")
 
   const [addDiagOpen, setAddDiagOpen] = useState(false)
 
-  async function loadDiagnoses() {
-    let cancelled = false
+  async function loadDiagnosis() {
+    const cancelled = false
     setLoading(true)
     setError(null)
     try {
-      const res = await authFetch('/api/patients/diagnoses')
-      if (!res.ok) throw new Error('failed to fetch diagnoses')
+      const res = await authFetch('/api/patients/diagnosis')
+      if (!res.ok) throw new Error('failed to fetch diagnosis')
       const body = await res.json()
-      const list: Diagnosis[] = Array.isArray(body.diagnoses) ? body.diagnoses.map((d: any) => ({
+      const list: Diagnosis[] = Array.isArray(body.diagnosis) ? body.diagnosis.map((d: any) => ({
         patientId: String(d.patientId || ''),
         patientName: String(d.patientName || ''),
         id: String(d.id || ''),
@@ -44,7 +44,7 @@ export default function IntegrationStatus() {
         notes: d.notes || null,
         createdAt: d.createdAt || null,
       })) : []
-      if (!cancelled) setDiagnoses(list)
+      if (!cancelled) setDiagnosis(list)
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err)
       if (!cancelled) setError(msg || 'error')
@@ -53,32 +53,32 @@ export default function IntegrationStatus() {
     }
   }
 
-  useEffect(() => { loadDiagnoses() }, [authFetch])
+  useEffect(() => { loadDiagnosis() }, [authFetch])
 
   const filtered = useMemo(() => {
     const q = (query || '').trim().toLowerCase()
-    if (!q) return diagnoses
-    return diagnoses.filter(d => ((d.patientName || '').toLowerCase().includes(q) || (d.disease || '').toLowerCase().includes(q) || (d.notes || '').toLowerCase().includes(q) || (d.icd11 || '').toLowerCase().includes(q)))
-  }, [diagnoses, query])
+    if (!q) return diagnosis
+    return diagnosis.filter(d => ((d.patientName || '').toLowerCase().includes(q) || (d.disease || '').toLowerCase().includes(q) || (d.notes || '').toLowerCase().includes(q) || (d.icd11 || '').toLowerCase().includes(q)))
+  }, [diagnosis, query])
 
   const [showAll, setShowAll] = useState(false)
   const displayList = showAll ? filtered : filtered.slice(0, 3)
 
   return (
     <Card className="bg-card border-border overflow-hidden">
-      <div className="bg-gradient-to-r from-green-500/5 via-green-500/3 to-transparent p-6 border-b border-border/50">
+      <div className="bg-linear-to-r from-green-500/5 via-green-500/3 to-transparent p-6 border-b border-border/50">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-green-500/10">
               <FileText className="h-5 w-5 text-green-600" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-foreground leading-tight">Recent Diagnoses</h2>
+              <h2 className="text-xl font-bold text-foreground leading-tight">Recent Diagnosis</h2>
               <p className="text-xs text-muted-foreground mt-0.5">Latest clinical records and observations</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => loadDiagnoses()} disabled={loading} aria-label="Refresh diagnoses" className="shadow-sm hover:shadow-md transition-shadow">
+            <Button variant="outline" size="sm" onClick={() => loadDiagnosis()} disabled={loading} aria-label="Refresh diagnosis" className="shadow-sm hover:shadow-md transition-shadow">
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             </Button>
             <Button size="sm" onClick={() => setAddDiagOpen(true)} className="flex items-center gap-2 shadow-sm hover:shadow-md transition-shadow">
@@ -103,7 +103,7 @@ export default function IntegrationStatus() {
           <div className="flex items-center justify-center py-8">
             <div className="flex items-center gap-3 text-muted-foreground">
               <RefreshCw className="w-5 h-5 animate-spin" />
-              <span className="text-sm">Loading diagnoses...</span>
+              <span className="text-sm">Loading diagnosis...</span>
             </div>
           </div>
         )}
@@ -122,7 +122,7 @@ export default function IntegrationStatus() {
               <Stethoscope className="h-8 w-8 text-muted-foreground" />
             </div>
             <p className="text-sm font-medium text-foreground mb-1">
-              {query ? 'No matching diagnoses' : 'No diagnoses yet'}
+              {query ? 'No matching diagnosis' : 'No diagnosis yet'}
             </p>
             <p className="text-xs text-muted-foreground">
               {query ? 'Try adjusting your search criteria' : 'Add a diagnosis to get started'}
@@ -139,7 +139,7 @@ export default function IntegrationStatus() {
             return (
               <div 
                 key={d.id} 
-                className="group p-3 border border-border rounded-lg bg-gradient-to-br from-card via-card to-muted/20 hover:shadow-lg hover:border-green-500/30 transition-all duration-300"
+                className="group p-3 border border-border rounded-lg bg-linear-to-br from-card via-card to-muted/20 hover:shadow-lg hover:border-green-500/30 transition-all duration-300"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
@@ -148,26 +148,26 @@ export default function IntegrationStatus() {
                         {d.patientName || `Patient ${d.patientId.slice(0, 8)}`}
                       </p>
                       {d.icd11 && (
-                        <span className="px-1.5 py-0.5 rounded-full text-xs bg-green-500/10 text-green-600 font-medium flex-shrink-0">
+                        <span className="px-1.5 py-0.5 rounded-full text-xs bg-green-500/10 text-green-600 font-medium shrink-0">
                           ICD-11
                         </span>
                       )}
                     </div>
                     <div className="flex items-start gap-1.5 mb-1">
-                      <Stethoscope className="h-3 w-3 text-green-600 flex-shrink-0 mt-0.5" />
-                      <p className="text-xs text-muted-foreground break-words">
+                      <Stethoscope className="h-3 w-3 text-green-600 shrink-0 mt-0.5" />
+                      <p className="text-xs text-muted-foreground wrap-break-words">
                         {diagnosisText}
                       </p>
                     </div>
                     {d.notes && (
                       <div className="mt-2 p-2 rounded-md bg-muted/50 border border-border/50">
-                        <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap break-words">
+                        <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap wrap-break-words">
                           {d.notes}
                         </p>
                       </div>
                     )}
                   </div>
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground flex-shrink-0">
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground shrink-0">
                     <Calendar className="h-3 w-3" />
                     <span className="hidden sm:inline">
                       {d.createdAt ? new Date(d.createdAt).toLocaleDateString('en-US', {
@@ -214,7 +214,7 @@ export default function IntegrationStatus() {
         )}
       </div>
       
-      <AddDiagnosisModal open={addDiagOpen} onClose={() => setAddDiagOpen(false)} onAdded={() => { setAddDiagOpen(false); loadDiagnoses() }} />
+      <AddDiagnosisModal open={addDiagOpen} onClose={() => setAddDiagOpen(false)} onAdded={() => { setAddDiagOpen(false); loadDiagnosis() }} />
     </Card>
   )
 }

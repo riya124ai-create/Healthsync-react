@@ -18,7 +18,7 @@ type Patient = {
   createdBy?: string
 }
 
-type Diagnosis = { id: string; patientId?: string; icd11?: string | null; disease?: string | null; notes?: string | null; createdAt?: string | null }
+type Diagnosis = { id: string; patientId?: string; icd11?: string | null; disease?: string | null; notes?: string | null; createdAt?: string | null; createdBy?: string | null }
 
 type AuthUser = { id?: string; email?: string } | null
 
@@ -76,23 +76,34 @@ export default function RecentPatients() {
   const pts = data.patients || []
   setPatients(pts)
 
-  // Fetch latest diagnoses for these patients and map them by patientId
+  // Fetch latest diagnosis for these patients and map them by patientId
   try {
-    const dr = await authFetch('/api/patients/diagnoses')
+    const dr = await authFetch('/api/patients/diagnosis')
     if (dr.ok) {
       const dd = await dr.json()
       console.log(dd);
-      const diagnosesArr: Diagnosis[] = Array.isArray(dd) ? dd : (Array.isArray(dd.diagnoses) ? dd.diagnoses : (Array.isArray(dd.items) ? dd.items : []))
+      const DiagnosisArr: Diagnosis[] = Array.isArray(dd) ? dd : (Array.isArray(dd.diagnosis) ? dd.diagnosis : (Array.isArray(dd.items) ? dd.items : []))
       const map: Record<string, Diagnosis | null> = {}
       // initialize with null (use string keys)
       for (const p of pts) map[String(p.id)] = null
-      for (const d of diagnosesArr) {
+      
+      // Get current user ID for filtering
+      const u = user as AuthUser
+      const currentUserId = u?.id
+      const currentUserEmail = u?.email
+      
+      // Only consider diagnosis created by the current user
+      for (const d of DiagnosisArr) {
+        // Skip if diagnosis wasn't created by current user
+        if (d.createdBy !== currentUserId && d.createdBy !== currentUserEmail) continue
+        
         const pidRaw = d.patientId ?? (d as any).patient_id ?? (d as any).patient ?? ''
         const pid = String((pidRaw && (typeof pidRaw === 'object' ? (pidRaw.id ?? pidRaw._id ?? '') : pidRaw)) || '')
         if (!pid) continue
         const cur = map[pid]
         const dCreated = d.createdAt ? new Date(d.createdAt) : null
         const curCreated = cur && cur.createdAt ? new Date(cur.createdAt) : null
+        // Keep the most recent diagnosis created by this user
         if (!cur || (dCreated && (!curCreated || dCreated > curCreated))) {
           map[pid] = d
         }
@@ -102,7 +113,7 @@ export default function RecentPatients() {
       setLatestByPatient({})
     }
   } catch (e) {
-    console.debug('failed loading diagnoses for patients', e)
+    console.debug('failed loading diagnosis for patients', e)
     setLatestByPatient({})
   }
     } catch (err) {
@@ -136,12 +147,23 @@ export default function RecentPatients() {
     const u = user as AuthUser
     const userEmail = u?.email
     const userId = u?.id
-    return patients.filter(p => p.createdBy === userId || p.createdBy === userEmail)
-  }, [patients, user])
+    const filtered = patients.filter(p => p.createdBy === userId || p.createdBy === userEmail)
+    
+    // Sort by diagnosis date (or creation date) in ascending order (oldest first)
+    return filtered.sort((a, b) => {
+      const diagnosisA = latestByPatient[a.id]
+      const diagnosisB = latestByPatient[b.id]
+      
+      const dateA = new Date(diagnosisA?.createdAt || a.createdAt || 0)
+      const dateB = new Date(diagnosisB?.createdAt || b.createdAt || 0)
+      
+      return dateB.getTime() - dateA.getTime()
+    })
+  }, [patients, user, latestByPatient])
 
   return (
     <Card className="bg-card border-border overflow-hidden">
-      <div className="bg-gradient-to-r from-primary/5 via-primary/3 to-transparent p-6 border-b border-border/50">
+      <div className="bg-linear-to-r from-primary/5 via-primary/3 to-transparent p-6 border-b border-border/50">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-primary/10">
@@ -192,10 +214,10 @@ export default function RecentPatients() {
             return (
               <div key={patient.id} className="group">
                 {/* Mobile View */}
-                <div className="sm:hidden p-3 rounded-lg border border-border bg-gradient-to-br from-card via-card to-muted/20 hover:shadow-lg hover:border-primary/30 transition-all duration-300">
+                <div className="sm:hidden p-3 rounded-lg border border-border bg-linear-to-br from-card via-card to-muted/20 hover:shadow-lg hover:border-primary/30 transition-all duration-300">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-start gap-2.5 flex-1 min-w-0">
-                      <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center flex-shrink-0 shadow-sm">
+                      <div className="w-10 h-10 rounded-lg bg-linear-to-br from-primary/20 to-primary/5 flex items-center justify-center shrink-0 shadow-sm">
                         <span className="text-sm font-bold text-primary">
                           {patient.name ? patient.name.split(" ")[0][0] : "P"}
                           {patient.name && patient.name.split(" ")[1] ? patient.name.split(" ")[1][0] : ""}
@@ -205,7 +227,7 @@ export default function RecentPatients() {
                         <p className="text-sm font-semibold text-foreground truncate mb-0.5">{patient.name || '—'}</p>
                         {hasDiagnosis ? (
                           <div className="flex items-center gap-1.5 mb-1.5">
-                            <Stethoscope className="h-3 w-3 text-primary flex-shrink-0" />
+                            <Stethoscope className="h-3 w-3 text-primary shrink-0" />
                             <p className="text-xs text-muted-foreground truncate">
                               {diagnosis.disease || diagnosis.icd11}
                             </p>
@@ -220,7 +242,7 @@ export default function RecentPatients() {
                           </span>
                           <span className="flex items-center gap-1">
                             <Calendar className="h-3 w-3" />
-                            {formatDateWithRelative(patient.createdAt)?.split(' (')[0]}
+                            {formatDateWithRelative(diagnosis?.createdAt || patient.createdAt)?.split(' (')[0]}
                           </span>
                         </div>
                       </div>
@@ -232,9 +254,9 @@ export default function RecentPatients() {
                 </div>
 
                 {/* Desktop View */}
-                <div className="hidden sm:flex items-center justify-between p-3 rounded-lg border border-border bg-gradient-to-br from-card via-card to-muted/20 hover:shadow-lg hover:border-primary/30 transition-all duration-300">
+                <div className="hidden sm:flex items-center justify-between p-3 rounded-lg border border-border bg-linear-to-br from-card via-card to-muted/20 hover:shadow-lg hover:border-primary/30 transition-all duration-300">
                   <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center flex-shrink-0 shadow-sm group-hover:scale-105 transition-transform duration-300">
+                    <div className="w-10 h-10 rounded-lg bg-linear-to-br from-primary/20 to-primary/5 flex items-center justify-center shrink-0 shadow-sm group-hover:scale-105 transition-transform duration-300">
                       <span className="text-sm font-bold text-primary">
                         {patient.name ? patient.name.split(" ")[0][0] : "P"}
                         {patient.name && patient.name.split(" ")[1] ? patient.name.split(" ")[1][0] : ""}
@@ -251,7 +273,7 @@ export default function RecentPatients() {
                       </div>
                       {hasDiagnosis ? (
                         <div className="flex items-center gap-1.5">
-                          <Stethoscope className="h-3 w-3 text-primary flex-shrink-0" />
+                          <Stethoscope className="h-3 w-3 text-primary shrink-0" />
                           <p className="text-xs text-muted-foreground truncate">
                             {diagnosis.disease && diagnosis.icd11 
                               ? `${diagnosis.disease} (${diagnosis.icd11})`
@@ -274,7 +296,7 @@ export default function RecentPatients() {
                       </div>
                       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                         <Calendar className="h-3 w-3" />
-                        <span>{formatDateWithRelative(patient.createdAt)}</span>
+                        <span>{formatDateWithRelative(diagnosis?.createdAt || patient.createdAt)}</span>
                       </div>
                     </div>
                     <Button 

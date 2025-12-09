@@ -146,7 +146,6 @@ router.patch('/mark-all-read', authenticateToken, async (req, res) => {
   }
 })
 
-// DELETE /api/notifications/:id - Delete a notification
 router.delete('/:id', authenticateToken, async (req, res) => {
   try {
     const db = await getDb()
@@ -177,7 +176,6 @@ router.delete('/:id', authenticateToken, async (req, res) => {
   }
 })
 
-// DELETE /api/notifications - Clear all notifications for user
 router.delete('/', authenticateToken, async (req, res) => {
   try {
     const db = await getDb()
@@ -196,7 +194,6 @@ router.delete('/', authenticateToken, async (req, res) => {
   }
 })
 
-// DELETE /api/notifications/patient/:patientId - Delete patient assignment notification
 router.delete('/patient/:patientId', authenticateToken, async (req, res) => {
   try {
     const db = await getDb()

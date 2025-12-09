@@ -41,8 +41,8 @@ router.post('/', async (req, res) => {
   }
 })
 
-// GET /api/diagnoses - return ALL diagnoses created by the requester (must be before /api/patients/:id)
-router.get('/diagnoses', async (req, res) => {
+// GET /api/diagnosis - return ALL diagnosis created by the requester (must be before /api/patients/:id)
+router.get('/diagnosis', async (req, res) => {
   try {
     const token = getTokenFromReq(req)
     if (!token) return res.status(401).json({ error: 'missing token' })
@@ -53,20 +53,20 @@ router.get('/diagnoses', async (req, res) => {
     if (!requester) return res.status(401).json({ error: 'invalid requester' })
 
     const db = await getDb()
-    if (!db) return res.status(503).json({ diagnoses: [] })
+    if (!db) return res.status(503).json({ diagnosis: [] })
 
-    // Find ALL patients that have diagnoses created by this doctor
+    // Find ALL patients that have diagnosis created by this doctor
     const cursor = db.collection('patients').find(
-      { 'diagnoses.createdBy': requester },
-      { projection: { name: 1, age: 1, diagnoses: 1, createdBy: 1, createdAt: 1 } }
+      { 'diagnosis.createdBy': requester },
+      { projection: { name: 1, age: 1, diagnosis: 1, createdBy: 1, createdAt: 1 } }
     )
     const results = await cursor.toArray()
     const list = []
     for (const p of results) {
       const pid = String(p._id)
       const pname = p.name || ''
-      const diags = Array.isArray(p.diagnoses) ? p.diagnoses : []
-      // Only include diagnoses created by this doctor
+      const diags = Array.isArray(p.diagnosis) ? p.diagnosis : []
+      // Only include diagnosis created by this doctor
       for (const d of diags) {
         if (d.createdBy === requester) {
           list.push({
@@ -91,11 +91,11 @@ router.get('/diagnoses', async (req, res) => {
     }
     // sort most recent first
     list.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
-    return res.json({ diagnoses: list })
+    return res.json({ diagnosis: list })
   } catch (err) {
     // eslint-disable-next-line no-console
-    console.error('fetch diagnoses error', err)
-    return res.status(500).json({ error: 'failed to fetch diagnoses' })
+    console.error('fetch diagnosis error', err)
+    return res.status(500).json({ error: 'failed to fetch diagnosis' })
   }
 })
 
@@ -187,8 +187,7 @@ router.delete('/:id', async (req, res) => {
   }
 })
 
-// add diagnosis to a patient (only creator)
-router.post('/:id/diagnoses', async (req, res) => {
+router.post('/:id/diagnosis', async (req, res) => {
   try {
     const token = getTokenFromReq(req)
     if (!token) return res.status(401).json({ error: 'missing token' })
@@ -198,7 +197,6 @@ router.post('/:id/diagnoses', async (req, res) => {
     const id = req.params.id
     const body = req.body || {}
     const { icd11, disease, notes } = body
-    // Require a text diagnosis (notes) for each diagnosis
     if (!notes || String(notes).trim() === '') return res.status(400).json({ error: 'notes (text diagnosis) required' })
 
     const db = await getDb()
@@ -212,13 +210,12 @@ router.post('/:id/diagnoses', async (req, res) => {
 
     const diag = { id: String(new ObjectId()), icd11: icd11 || null, disease: disease ? String(disease) : null, notes: notes ? String(notes) : null, createdAt: new Date(), createdBy: requester }
     
-    // Add diagnosis and update patient record (keep patient assigned to doctor, clear assignedAt)
+    
     await patients.updateOne({ _id: new ObjectId(id) }, { 
-      $push: { diagnoses: diag }, 
+      $push: { diagnosis: diag }, 
       $set: { assignedAt: null, updatedAt: new Date() } 
     })
     
-    // Delete the patient assignment notification
     try {
       await db.collection('notifications').deleteOne({
         userId: requester,
@@ -230,7 +227,6 @@ router.post('/:id/diagnoses', async (req, res) => {
       console.error('Error deleting notification:', notifErr)
     }
     
-    // Emit socket event to remove patient from recently assigned panel
     try {
       const io = req.app.get('io')
       const userSockets = req.app.get('userSockets')
@@ -258,8 +254,8 @@ router.post('/:id/diagnoses', async (req, res) => {
   }
 })
 
-// GET /api/patients/:id/diagnoses - get diagnoses for a specific patient
-router.get('/:id/diagnoses', async (req, res) => {
+// GET /api/patients/:id/diagnosis - get diagnosis for a specific patient
+router.get('/:id/diagnosis', async (req, res) => {
   try {
     const token = getTokenFromReq(req)
     if (!token) return res.status(401).json({ error: 'missing token' })
@@ -274,11 +270,11 @@ router.get('/:id/diagnoses', async (req, res) => {
     const doc = await patients.findOne({ _id: new ObjectId(id) })
     if (!doc) return res.status(404).json({ error: 'patient not found' })
 
-    const diagnoses = Array.isArray(doc.diagnoses) ? doc.diagnoses : []
-    return res.json({ diagnoses })
+    const diagnosis = Array.isArray(doc.diagnosis) ? doc.diagnosis : []
+    return res.json({ diagnosis })
   } catch (err) {
-    console.error('fetch patient diagnoses error', err)
-    return res.status(500).json({ error: 'failed to fetch diagnoses' })
+    console.error('fetch patient diagnosis error', err)
+    return res.status(500).json({ error: 'failed to fetch diagnosis' })
   }
 })
 

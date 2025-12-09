@@ -58,17 +58,20 @@ export default function ReportsPage() {
         const reportDate = new Date(r.createdAt)
         
         switch (dateFilter) {
-          case 'today':
+          case 'today': {
             const reportDay = new Date(reportDate.getFullYear(), reportDate.getMonth(), reportDate.getDate())
             return reportDay.getTime() === today.getTime()
-          case 'week':
+          }
+          case 'week': {
             const weekAgo = new Date(today)
             weekAgo.setDate(weekAgo.getDate() - 7)
             return reportDate >= weekAgo
-          case 'month':
+          }
+          case 'month': {
             const monthAgo = new Date(today)
             monthAgo.setMonth(monthAgo.getMonth() - 1)
             return reportDate >= monthAgo
+          }
           default:
             return true
         }
@@ -87,7 +90,7 @@ export default function ReportsPage() {
     setLoading(true)
     try {
       if (role === 'organization' && orgId) {
-        // Organization view: Load all diagnoses from all doctors
+        // Organization view: Load all diagnosis from all doctors
         const res = await authFetch(`/api/organizations/${orgId}/doctors`)
         if (!res.ok) throw new Error('failed to load doctors')
         const data = await res.json()
@@ -96,7 +99,7 @@ export default function ReportsPage() {
         for (const d of docs) {
           const doctorName = (d && (d.name || (d.profile && d.profile.name) || d.email)) || 'Unknown'
           const doctorId = (d && (d.id || d._id || d.userId)) || undefined
-          for (const diag of (d.diagnoses || [])) {
+          for (const diag of (d.diagnosis || [])) {
             const rec = diag as any
             collected.push({ id: rec.id || rec._id || String(Math.random()), patientId: rec.patientId || '', patientName: rec.patientName || rec.patientId, doctorId, doctorName, icd11: rec.icd11 || null, disease: rec.disease || null, notes: rec.notes || null, createdAt: rec.createdAt || null })
           }
@@ -104,11 +107,11 @@ export default function ReportsPage() {
         collected.sort((a, b) => { const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0; const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0; return tb - ta })
         setReports(collected)
       } else {
-        // Doctor view: Load only their diagnoses
-        const res = await authFetch('/api/patients/diagnoses')
-        if (!res.ok) throw new Error('failed to load diagnoses')
+        // Doctor view: Load only their diagnosis
+        const res = await authFetch('/api/patients/diagnosis')
+        if (!res.ok) throw new Error('failed to load diagnosis')
         const data = await res.json()
-        const diagList = data.diagnoses || []
+        const diagList = data.diagnosis || []
         const collected: Report[] = diagList.map((diag: any) => ({
           id: diag.id || diag._id || String(Math.random()),
           patientId: diag.patientId || diag.patient?.id || '',
@@ -178,7 +181,7 @@ export default function ReportsPage() {
     <div className="space-y-6">
       {/* Header Card */}
       <Card className="bg-card border-border overflow-hidden">
-        <div className="bg-gradient-to-r from-purple-500/5 via-purple-500/3 to-transparent p-6 border-b border-border/50">
+        <div className="bg-linear-to-r from-purple-500/5 via-purple-500/3 to-transparent p-6 border-b border-border/50">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-purple-500/10">
@@ -190,8 +193,8 @@ export default function ReportsPage() {
                 </h2>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   {role === 'organization' 
-                    ? 'View all diagnoses across your organization' 
-                    : 'View all diagnoses you\'ve created'}
+                    ? 'View all diagnosis across your organization' 
+                    : 'View all diagnosis you\'ve created'}
                 </p>
               </div>
             </div>
@@ -339,8 +342,8 @@ export default function ReportsPage() {
             <p className="text-sm text-muted-foreground">No reports found</p>
             <p className="text-xs text-muted-foreground mt-0.5">
               {role === 'organization' 
-                ? 'Diagnoses created by doctors will appear here' 
-                : 'Your diagnoses will appear here'}
+                ? 'Diagnosis created by doctors will appear here' 
+                : 'Your diagnosis will appear here'}
             </p>
           </div>
         )}
@@ -419,7 +422,7 @@ export default function ReportsPage() {
                 {expandedId === r.id && (
                   <div className="mt-2.5 ml-12 p-2.5 rounded-lg bg-muted/30 border border-border/50">
                     <p className="text-xs font-semibold text-muted-foreground mb-1">Clinical Notes:</p>
-                    <p className="text-xs text-foreground whitespace-pre-wrap break-words">
+                    <p className="text-xs text-foreground whitespace-pre-wrap wrap-break-words">
                       {r.notes || '—'}
                     </p>
                   </div>

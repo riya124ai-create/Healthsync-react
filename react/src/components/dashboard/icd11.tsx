@@ -304,7 +304,7 @@ export default function ICD11Sidebar({ onSelectAction }: { onSelectAction?: (ite
 				>
 					<div>
 						<h4 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
-							🏥 AI-Generated Medical Information
+							Medical Information
 						</h4>
 						<div className="space-y-4">
 							<div className="bg-primary/5 p-3 rounded-lg border border-primary/20">

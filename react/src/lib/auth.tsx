@@ -113,7 +113,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const res = await fetch(`${API_BASE}/api/auth/google`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ credential }) })
     const data = await res.json()
     if (!res.ok) throw new Error(data?.error || 'Failed')
-    return { needPin: !!data.needPin, hasPin: !!data.hasPin }
+    return { needPin: data.needPin, hasPin: data.hasPin }
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

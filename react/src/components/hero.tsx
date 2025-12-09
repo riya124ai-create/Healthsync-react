@@ -273,7 +273,7 @@ export function Hero() {
                   </Button>
                 </motion.div>
 
-                {/* Saved Diagnoses Preview */}
+                {/* Saved Diagnosis Preview */}
                 <motion.div 
                   className="space-y-3"
                   initial={{ opacity: 0, y: 20 }}
@@ -282,11 +282,11 @@ export function Hero() {
                 >
                   <div className="flex items-center gap-2">
                     <div className="w-1 h-1 rounded-full bg-emerald-500"></div>
-                    <span className="text-sm font-medium text-foreground/70 dark:text-foreground/80">Recent Diagnoses</span>
+                    <span className="text-sm font-medium text-foreground/70 dark:text-foreground/80">Recent Diagnosis</span>
                   </div>
                   <div className="space-y-2 max-h-32 overflow-y-auto">
                     {saved.length === 0 ? (
-                      <p className="text-sm text-foreground/50 dark:text-foreground/60 italic">Try the search to save diagnoses</p>
+                      <p className="text-sm text-foreground/50 dark:text-foreground/60 italic">Try the search to save diagnosis</p>
                     ) : (
                       saved.slice(0, 3).map((s, idx) => (
                         <motion.div 
@@ -352,7 +352,7 @@ export function Hero() {
                       
                       <div className="relative">
                         <input
-                          aria-label="Search ICD-11 diagnoses"
+                          aria-label="Search ICD-11 diagnosis"
                           role="combobox"
                           aria-controls={listboxId}
                           aria-expanded={filtered.length > 0}
