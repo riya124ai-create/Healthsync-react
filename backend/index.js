@@ -1,7 +1,6 @@
 const path = require('path')
-// load local .env for development
+
 try {
-  // prefer backend/.env
   require('dotenv').config({ path: path.join(__dirname, '.env') })
 } catch (e) {
   // ignore if dotenv is not installed or no .env present
@@ -23,30 +22,27 @@ const groqRouter = require('./routes/groq')
 const app = express()
 const server = http.createServer(app)
 const PORT = process.env.PORT || 4000
-const JWT_SECRET = process.env.JWT_SECRET || 'change-this-secret'
+const JWT_SECRET = process.env.JWT_SECRET
 
 // Socket.IO setup - only enable on Render (not Vercel serverless)
-// Set ENABLE_SOCKETS=true in Render environment variables
 const ENABLE_SOCKETS = process.env.ENABLE_SOCKETS === 'true'
 
 let io = null
 let userSockets = null
 
 if (ENABLE_SOCKETS) {
-  console.log('🔌 Socket.IO enabled - Real-time notifications active')
+  console.log('Socket.IO enabled - Real-time notifications active')
   
   io = new Server(server, {
     cors: {
-      origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+      origin: process.env.FRONTEND_URL || 'http://localhost:3000',
       methods: ['GET', 'POST'],
       credentials: true
     }
   })
 
-  // Store user socket connections: userId -> socketId
   userSockets = new Map()
 
-  // Socket.IO authentication middleware
   io.use((socket, next) => {
     const token = socket.handshake.auth.token
     if (!token) {
@@ -55,7 +51,7 @@ if (ENABLE_SOCKETS) {
 
     try {
       const decoded = jwt.verify(token, JWT_SECRET)
-      socket.userId = decoded.id || decoded.email
+      socket.userId = decoded.id
       socket.userEmail = decoded.email
       socket.userRole = decoded.role
       next()
@@ -64,37 +60,29 @@ if (ENABLE_SOCKETS) {
     }
   })
 
-  // Socket.IO connection handling
   io.on('connection', (socket) => {
     console.log(`User connected: ${socket.userId} (${socket.userEmail})`)
     
-    // Store user's socket connection
     userSockets.set(socket.userId, socket.id)
 
-    // Notify user they're connected
     socket.emit('connected', { 
       userId: socket.userId,
       message: 'Successfully connected to HealthSync real-time service'
     })
 
-    // Handle disconnection
     socket.on('disconnect', () => {
       console.log(`User disconnected: ${socket.userId}`)
       userSockets.delete(socket.userId)
       
-      // Broadcast updated connected users list
       const connectedUserIds = Array.from(userSockets.keys())
-      console.log(`📡 Broadcasting updated connected users (${connectedUserIds.length} users):`, connectedUserIds)
+      console.log(`Broadcasting updated connected users (${connectedUserIds.length} users):`, connectedUserIds)
       io.emit('connected:users', { users: connectedUserIds })
     })
 
-    // Handle patient assignment notification (emitted from API routes)
     socket.on('patient:assign', (data) => {
-      // This is handled by the API route, but we listen for confirmation
       socket.emit('patient:assigned:ack', { success: true })
     })
 
-    // Handle request for connected users list (for organization dashboard)
     socket.on('get:connected-users', () => {
       if (socket.userRole === 'organization') {
         const connectedUserIds = Array.from(userSockets.keys())
@@ -102,20 +90,17 @@ if (ENABLE_SOCKETS) {
       }
     })
 
-    // Broadcast when a user connects/disconnects (for real-time updates)
     const broadcastConnectedUsers = () => {
       const connectedUserIds = Array.from(userSockets.keys())
       io.emit('connected:users', { users: connectedUserIds })
     }
     
-    // Broadcast after a short delay to let the connection stabilize
     setTimeout(broadcastConnectedUsers, 500)
   })
 } else { 
-  console.log('⚠️ Socket.IO disabled - Running in serverless mode (notifications saved to DB only)')
+  console.log('Socket.IO disabled - Running in serverless mode (notifications saved to DB only)')
 }
 
-// Make io and userSockets available to routes (will be null if disabled)
 app.set('io', io)
 app.set('userSockets', userSockets)
 

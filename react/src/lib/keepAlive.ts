@@ -15,7 +15,7 @@ const MIN_PING_INTERVAL = 5 * 60 * 1000 // 5 minutes
  */
 async function pingBackend(): Promise<boolean> {
   try {
-    console.log('🏓 Pinging backend to keep server awake...')
+    console.log('Pinging backend to keep server awake...')
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout
     
@@ -27,17 +27,17 @@ async function pingBackend(): Promise<boolean> {
     clearTimeout(timeoutId)
     
     if (response.ok) {
-      console.log('✅ Backend is awake and responding')
+      console.log('Backend is awake and responding')
       return true
     } else {
-      console.warn('⚠️ Backend responded with non-OK status:', response.status)
+      console.warn('Backend responded with non-OK status:', response.status)
       return false
     }
   } catch (error) {
     if (error instanceof Error && error.name === 'AbortError') {
-      console.warn('⏱️ Backend ping timed out - server may be waking up')
+      console.warn('Backend ping timed out - server may be waking up')
     } else {
-      console.error('❌ Failed to ping backend:', error)
+      console.error('Failed to ping backend:', error)
     }
     return false
   }
@@ -53,12 +53,12 @@ export async function wakeUpOnPageLoad(): Promise<void> {
   
   // Throttle: Skip if we pinged recently (within MIN_PING_INTERVAL)
   if (timeSinceLastPing < MIN_PING_INTERVAL) {
-    console.log('⏭️ Skipping ping - too soon since last ping')
+    console.log('Skipping ping - too soon since last ping')
     return
   }
   
   lastPingTime = now
-  console.log('🚀 Waking up backend on page load...')
+  console.log('Waking up backend on page load...')
   await pingBackend()
 }
 
@@ -66,6 +66,6 @@ export async function wakeUpOnPageLoad(): Promise<void> {
  * Manually trigger a backend ping (useful for testing or on-demand wake-up)
  */
 export async function wakeUpBackend(): Promise<boolean> {
-  console.log('⏰ Manually waking up backend...')
+  console.log('Manually waking up backend...')
   return await pingBackend()
 }

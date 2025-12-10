@@ -1,8 +1,8 @@
 const { MongoClient } = require('mongodb')
 
 const uri = process.env.MONGODB_URI
-const dbName = process.env.MONGODB_DB || 'healthsync'
-console.log('MongoDB URI:', uri ? uri.replace(/\/\/(.*):(.*)@/, '//***:***@') : 'not set');
+const dbName = process.env.MONGODB_DB
+// console.log('MongoDB URI:', uri ? uri.replace(/\/\/(.*):(.*)@/, '//***:***@') : 'not set');
 /**
  * Cached client across hot reloads
  */

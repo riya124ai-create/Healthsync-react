@@ -49,7 +49,7 @@ function AppWithSocket({ children }: { children: React.ReactNode }) {
     }
   }, [user])
   
-  // Re-render when user changes (login/logout)
+
   return <SocketProvider token={token} key={user?.id || 'anonymous'}>{children}</SocketProvider>
 }
 

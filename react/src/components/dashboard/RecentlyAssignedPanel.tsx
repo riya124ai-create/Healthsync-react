@@ -68,7 +68,7 @@ export default function RecentlyAssignedPanel({ onWriteDiagnosis }: RecentlyAssi
       timestamp: string
       message: string
     }) => {
-      console.log('📢 Patient assigned (RecentlyAssignedPanel):', data)
+      console.log('Patient assigned (RecentlyAssignedPanel):', data)
       
       // Add the new patient to the list immediately
       const newPatient: Patient = {
@@ -90,7 +90,7 @@ export default function RecentlyAssignedPanel({ onWriteDiagnosis }: RecentlyAssi
     }
 
     const handleDiagnosisAdded = (data: { patientId: string; diagnosisId: string }) => {
-      console.log('📋 Diagnosis added, removing patient:', data.patientId)
+      console.log('Diagnosis added, removing patient:', data.patientId)
       
       // Remove the patient from the list
       setPatients((prev) => prev.filter(p => p.id !== data.patientId))

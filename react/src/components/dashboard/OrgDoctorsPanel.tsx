@@ -205,7 +205,6 @@ export default function OrgDoctorsPanel({ orgId }: { orgId: string | null }) {
             <div key={d.id}
               className={"relative border border-border rounded-lg p-4 bg-background flex flex-col sm:flex-row gap-3 overflow-hidden " + (dropTarget === d.id ? 'ring-2 ring-primary/60' : '')}
               onDragOver={(e) => { e.preventDefault(); setDropTarget(d.id) }}
-              onDragEnter={(e) => { e.preventDefault(); setDropTarget(d.id) }}
               onDragLeave={() => { setDropTarget(null) }}
               onDrop={async (e) => {
                 e.preventDefault()
@@ -248,17 +247,14 @@ export default function OrgDoctorsPanel({ orgId }: { orgId: string | null }) {
                     console.debug('dispatch orgPatientAssigned failed', e)
                   }
 
-                  // call assign endpoint
                   const res = await authFetch(`/api/organizations/${orgId}/patients/${patientId}/assign`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ doctorId: d.id }) })
                   if (!res.ok) {
                     const txt = await res.text().catch(() => '')
-                    // revert by refreshing full data
                     await refreshDoctors()
                     setPanelError(txt || 'Failed to assign patient')
                   } else {
-                    // success — refresh to reconcile metadata and show success message
                     await refreshDoctors()
-                    console.log('✅ Patient assigned successfully - doctor will receive real-time notification')
+                    console.log('Patient assigned successfully - doctor will receive real-time notification')
                   }
                 } catch (err) {
                   console.error('drop assign error', err)

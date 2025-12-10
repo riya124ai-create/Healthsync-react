@@ -16,7 +16,7 @@ export const SocketProvider = ({ children, token }: SocketProviderProps) => {
     if (!token) {
       // No token, disconnect if connected
       if (socket) {
-        console.log('🔌 Disconnecting socket due to no token')
+        console.log('Disconnecting socket due to no token')
         socket.disconnect()
         setSocket(null)
         setIsConnected(false)
@@ -28,7 +28,7 @@ export const SocketProvider = ({ children, token }: SocketProviderProps) => {
     // Use Render backend for Socket.IO, separate from Vercel API
     const SOCKET_URL = (import.meta.env.VITE_SOCKET_URL as string) || (import.meta.env.VITE_API_URL as string) || 'http://localhost:4000'
     
-    console.log('🔌 Connecting to Socket.IO at:', SOCKET_URL)
+    console.log('Connecting to Socket.IO at:', SOCKET_URL)
     
     const newSocket = io(SOCKET_URL, {
       auth: {
@@ -46,7 +46,7 @@ export const SocketProvider = ({ children, token }: SocketProviderProps) => {
     })
 
     newSocket.on('connected', (data) => {
-      console.log('📨 Server connected message:', data.message)
+      console.log('Server connected message:', data.message)
     })
 
     newSocket.on('disconnect', () => {
@@ -62,7 +62,7 @@ export const SocketProvider = ({ children, token }: SocketProviderProps) => {
     // Cleanup on unmount or when token changes
     return () => {
       if (newSocket) {
-        console.log('🔌 Cleaning up socket connection')
+        console.log('Cleaning up socket connection')
         newSocket.disconnect()
       }
     }

@@ -29,7 +29,7 @@ export default function DashboardLayout() {
       timestamp: string
       message: string
     }) => {
-      console.log('📢 Real-time patient assignment notification received:', data)
+      console.log('Real-time patient assignment notification received:', data)
       
       // Fetch the latest notification from database to get the proper ID
       // This ensures we use the same notification that was saved to DB
@@ -141,16 +141,14 @@ export default function DashboardLayout() {
   }, [authFetch])
 
   const removeToastNotification = (id: string) => {
-    // Only remove from toast display, keep in persistent list
     setToastNotifications((prev) => prev.filter((n) => n.id !== id))
   }
 
   const removeNotification = async (id: string) => {
-    // Remove from both lists and delete from database
     setAllNotifications((prev) => prev.filter((n) => n.id !== id))
     setToastNotifications((prev) => prev.filter((n) => n.id !== id))
     
-    // Delete from database
+    // deletee from database
     try {
       const response = await authFetch(`/api/notifications/${id}`, { method: 'DELETE' })
       if (!response.ok) {
@@ -165,7 +163,6 @@ export default function DashboardLayout() {
     setAllNotifications([])
     setToastNotifications([])
     
-    // Clear from database
     try {
       const response = await authFetch('/api/notifications', { method: 'DELETE' })
       if (!response.ok) {
@@ -176,7 +173,6 @@ export default function DashboardLayout() {
     }
   }
 
-  // Get today's notifications only
   const getTodaysNotifications = () => {
     const today = new Date()
     today.setHours(0, 0, 0, 0)
@@ -188,7 +184,7 @@ export default function DashboardLayout() {
   }
 
   return (
-    <div className={`flex min-h-screen bg-gradient-to-br from-background via-background to-muted/20 relative`}>
+    <div className={`flex min-h-screen bg-linear-to-br from-background via-background to-muted/20 relative`}>
       {/* Background Pattern */}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_80%,rgba(14,165,233,0.02),transparent_50%),radial-gradient(circle_at_80%_20%,rgba(16,185,129,0.02),transparent_50%)] dark:bg-[radial-gradient(circle_at_20%_80%,rgba(14,165,233,0.05),transparent_50%),radial-gradient(circle_at_80%_20%,rgba(16,185,129,0.05),transparent_50%)]" />
       <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(14,165,233,0.005)_1px,transparent_1px),linear-gradient(rgba(14,165,233,0.005)_1px,transparent_1px)] bg-[size:6rem_6rem] dark:bg-[linear-gradient(90deg,rgba(14,165,233,0.01)_1px,transparent_1px),linear-gradient(rgba(14,165,233,0.01)_1px,transparent_1px)]" />
@@ -199,7 +195,7 @@ export default function DashboardLayout() {
       {/* Connection Status Indicator (optional) */}
       {!isConnected && (
         <div className="fixed bottom-4 right-4 z-50 bg-yellow-500/10 border border-yellow-500/50 text-yellow-900 dark:text-yellow-100 px-4 py-2 rounded-lg text-sm backdrop-blur-xl">
-          ⚠️ Real-time notifications offline
+          ⚠️ Real-time notifications offline! Refresh the page to reconnect.
         </div>
       )}
 
