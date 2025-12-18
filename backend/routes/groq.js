@@ -92,4 +92,48 @@ Provide accurate, evidence-based medical information. Be comprehensive but conci
   }
 })
 
+router.post('/research-papers', async (req, res) => {
+  try {
+    const { query } = req.body
+
+    if (!query) {
+      return res.status(400).json({ error: 'Search query is required' })
+    }
+
+    const SERPAPI_KEY = process.env.SERPAPI_KEY
+    
+    if (!SERPAPI_KEY) {
+      return res.status(500).json({ error: 'SerpAPI key not configured' })
+    }
+
+    const url = `https://serpapi.com/search.json?engine=google_scholar&q=${encodeURIComponent(query)}&api_key=${SERPAPI_KEY}&num=100`
+    
+    const response = await fetch(url)
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('SerpAPI error:', errorText)
+      return res.status(response.status).json({ error: 'Failed to fetch research papers' })
+    }
+    const data = await response.json()
+    console.log(data);
+    
+    const papers = (data.organic_results || []).map(paper => ({
+      title: paper.title,
+      link: paper.link,
+      snippet: paper.snippet,
+      publication: paper.publication_info?.summary || '',
+      citedBy: paper.inline_links?.cited_by?.total || 0,
+      authors: paper.publication_info?.authors || [],
+      year: paper.publication_info?.summary?.match(/\d{4}/) ? paper.publication_info.summary.match(/\d{4}/)[0] : ''
+    }))
+
+    return res.json({ success: true, papers })
+
+  } catch (err) {
+    console.error('Research papers API error:', err)
+    return res.status(500).json({ error: 'Failed to fetch research papers' })
+  }
+})
+
 module.exports = router

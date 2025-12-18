@@ -30,6 +30,16 @@ type ICDDetail = {
 	clinicalNotes?: string[]
 }
 
+type ResearchPaper = {
+	title: string
+	link: string
+	snippet: string
+	publication: string
+	citedBy: number
+	authors: string[]
+	year: string
+}
+
 export default function ICD11Sidebar({ onSelectAction }: { onSelectAction?: (item: ICDItem) => void }) {
 	const [query, setQuery] = useState("")
 	const [results, setResults] = useState<ICDItem[]>([])
@@ -38,12 +48,17 @@ export default function ICD11Sidebar({ onSelectAction }: { onSelectAction?: (ite
 	const [selectedId, setSelectedId] = useState<string | null>(null)
 	const [detailedInfo, setDetailedInfo] = useState<ICDDetail | null>(null)
 	const [loadingDetails, setLoadingDetails] = useState(false)
+	const [researchPapers, setResearchPapers] = useState<ResearchPaper[]>([])
+	const [loadingPapers, setLoadingPapers] = useState(false)
 	const [showResults, setShowResults] = useState(true)
 	const [isSelectionActive, setIsSelectionActive] = useState(false)
 	const [canScrollUp, setCanScrollUp] = useState(false)
 	const [canScrollDown, setCanScrollDown] = useState(false)
+	const [canScrollUpPapers, setCanScrollUpPapers] = useState(false)
+	const [canScrollDownPapers, setCanScrollDownPapers] = useState(false)
 	const scrollRef = useRef<HTMLDivElement>(null)
 	const detailScrollRef = useRef<HTMLDivElement>(null)
+	const papersScrollRef = useRef<HTMLDivElement>(null)
 
 	const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
 		const element = e.currentTarget
@@ -178,6 +193,40 @@ export default function ICD11Sidebar({ onSelectAction }: { onSelectAction?: (ite
 		}
 	}
 
+	async function fetchResearchPapers(diseaseName: string, icdCode: string) {
+		setLoadingPapers(true)
+		const searchQuery = `${diseaseName} ${icdCode} medical research treatment diagnosis`
+		
+		try {
+			const API_BASE = (import.meta.env.VITE_API_URL as string) || 'http://localhost:4000'
+			
+			const response = await fetch(`${API_BASE}/api/groq/research-papers`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({ query: searchQuery })
+			})
+
+			if (!response.ok) {
+				throw new Error('Failed to fetch research papers')
+			}
+
+			const result = await response.json()
+			
+			if (result.success && result.papers) {
+				setResearchPapers(result.papers)
+			} else {
+				setResearchPapers([])
+			}
+		} catch (err) {
+			console.error('Error fetching research papers:', err)
+			setResearchPapers([])
+		} finally {
+			setLoadingPapers(false)
+		}
+	}
+
 	function handleSelect(item: ICDItem) {
 		setSelectedId(item.id)
 		setShowResults(false) // Hide search results
@@ -186,12 +235,17 @@ export default function ICD11Sidebar({ onSelectAction }: { onSelectAction?: (ite
 		setCanScrollUp(false) // Reset scroll indicators
 		setCanScrollDown(false)
 		fetchDetailedInfo(item.icd)
+		fetchResearchPapers(item.title, item.icd)
 		onSelectAction?.(item)
 		// Check scroll for detail section after data loads
 		setTimeout(() => {
 			if (detailScrollRef.current) {
 				const el = detailScrollRef.current
 				setCanScrollDown(el.scrollHeight > el.clientHeight)
+			}
+			if (papersScrollRef.current) {
+				const el = papersScrollRef.current
+				setCanScrollDownPapers(el.scrollHeight > el.clientHeight)
 			}
 		}, 500)
 	}
@@ -274,6 +328,101 @@ export default function ICD11Sidebar({ onSelectAction }: { onSelectAction?: (ite
 				</div>
 			)}
 		</div>
+		)}
+
+		{/* Research Papers Section */}
+			{loadingPapers && (
+				<div className="mt-4 p-4 border border-border rounded-lg bg-accent/5">
+					<p className="text-sm text-muted-foreground">Loading research papers...</p>
+				</div>
+			)}
+
+			{researchPapers.length > 0 && !loadingPapers && (
+				<div className="mt-4 p-4 border border-border rounded-lg bg-accent/5 space-y-3">
+					<div className="flex items-center gap-2 mb-3">
+						<h4 className="text-sm font-bold text-foreground">Reference Papers & Research</h4>
+						<span className="text-xs text-muted-foreground ml-auto">({researchPapers.length} papers)</span>
+					</div>
+				<div className="relative">
+					{canScrollUpPapers && (
+						<div className="absolute top-0 left-0 right-0 h-10 bg-linear-to-b from-accent/5 to-transparent z-10 flex items-start justify-center pointer-events-none rounded-t-lg">
+							<ChevronUp className="w-5 h-5 text-primary mt-2" />
+						</div>
+					)}
+					<div 
+						ref={papersScrollRef}
+						className="space-y-3 max-h-96 overflow-y-auto" 
+						style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+						onScroll={(e) => {
+							const element = e.currentTarget
+							setCanScrollUpPapers(element.scrollTop > 0)
+							setCanScrollDownPapers(
+								element.scrollTop < element.scrollHeight - element.clientHeight - 1
+							)
+						}}
+					>
+						{researchPapers.map((paper, idx) => (
+							<a 
+								key={idx}
+								href={paper.link || '#'} 
+								target="_blank" 
+								rel="noopener noreferrer"
+								className="block p-3 bg-background rounded-lg border border-border hover:border-primary hover:shadow-md transition-all cursor-pointer space-y-2"
+							>
+								<div className="flex items-start gap-2">
+									<span className="text-primary text-xs mt-1">🔗</span>
+									<h5 className="text-sm font-semibold text-primary hover:underline line-clamp-2 flex-1">
+										{paper.title || 'Untitled Paper'}
+									</h5>
+								</div>
+								{paper.snippet && (
+									<p className="text-xs text-muted-foreground line-clamp-3 pl-5">
+										{paper.snippet}
+									</p>
+								)}
+								<div className="flex items-center flex-wrap gap-3 text-xs text-muted-foreground pl-5">
+									{paper.year && (
+										<span className="flex items-center gap-1">
+											<span>📅</span>
+											<span>{paper.year}</span>
+										</span>
+									)}
+									{paper.citedBy > 0 && (
+										<span className="flex items-center gap-1 font-medium">
+											<span>📖</span>
+											<span>Cited by {paper.citedBy}</span>
+										</span>
+									)}
+									{paper.publication && (
+										<span className="truncate flex-1">
+											{paper.publication}
+										</span>
+									)}
+								</div>
+								{paper.authors && paper.authors.length > 0 && (
+									<div className="flex flex-wrap gap-1 pl-5">
+										{paper.authors.slice(0, 3).map((author, aIdx) => (
+											<span key={aIdx} className="text-xs px-2 py-0.5 bg-primary/10 text-primary rounded">
+												{typeof author === 'string' ? author : author.name || 'Unknown'}
+											</span>
+										))}
+										{paper.authors.length > 3 && (
+											<span className="text-xs px-2 py-0.5 bg-muted text-muted-foreground rounded">
+												+{paper.authors.length - 3} more
+											</span>
+										)}
+									</div>
+								)}
+							</a>
+						))}
+					</div>
+					{canScrollDownPapers && (
+						<div className="absolute bottom-0 left-0 right-0 h-10 bg-linear-to-t from-accent/5 to-transparent flex items-end justify-center pointer-events-none rounded-b-lg">
+							<ChevronDown className="w-5 h-5 text-primary mb-2" />
+						</div>
+					)}
+				</div>
+			</div>
 		)}
 
 		{/* Detailed Information Section */}
