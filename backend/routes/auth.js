@@ -15,7 +15,7 @@ router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body || {}
     if (!email || !password) return res.status(400).json({ error: 'email and password required' })
-    console.log(process.env.MONGODB_URI);
+    // console.log(process.env.MONGODB_URI);
     const found = await findByEmail(email)
     if (!found) return res.status(401).json({ error: 'Invalid credentials' })
 

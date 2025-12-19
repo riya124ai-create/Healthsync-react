@@ -121,16 +121,27 @@ export function Hero() {
 
   const listboxId = 'icd-listbox'
 
-  const [scrollStates, setScrollStates] = useState<Record<string, { canScrollUp: boolean; canScrollDown: boolean }>>({})
-  const scrollRefs = useRef<Record<string, HTMLDivElement | null>>({})
+  const [canScrollUpResults, setCanScrollUpResults] = useState(false)
+  const [canScrollDownResults, setCanScrollDownResults] = useState(false)
+  const resultsScrollRef = useRef<HTMLDivElement | null>(null)
 
-  const handleScroll = (key: string) => {
-    const el = scrollRefs.current[key]
-    if (!el) return
-    const canScrollUp = el.scrollTop > 5
-    const canScrollDown = el.scrollTop < el.scrollHeight - el.clientHeight - 5
-    setScrollStates(prev => ({ ...prev, [key]: { canScrollUp, canScrollDown } }))
+  const handleResultsScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const element = e.currentTarget
+    setCanScrollUpResults(element.scrollTop > 5)
+    setCanScrollDownResults(
+      element.scrollTop < element.scrollHeight - element.clientHeight - 5
+    )
   }
+
+  useEffect(() => {
+    // Check if results need scroll indicators on mount/update
+    if (resultsScrollRef.current && filtered.length > 0) {
+      const el = resultsScrollRef.current
+      setTimeout(() => {
+        setCanScrollDownResults(el.scrollHeight > el.clientHeight)
+      }, 100)
+    }
+  }, [filtered.length])
 
   const onInputKeyDown = (e: any) => {
     if (filtered.length === 0) return
@@ -391,7 +402,7 @@ export function Hero() {
                       {/* Search Results */}
                       {filtered.length > 0 && (
                         <motion.div
-                          className="space-y-2 max-h-64 overflow-y-auto"
+                          className="relative"
                           initial={{ opacity: 0, height: 0 }}
                           animate={{ opacity: 1, height: "auto" }}
                           exit={{ opacity: 0, height: 0 }}
@@ -399,45 +410,51 @@ export function Hero() {
                           <div className="text-xs text-slate-400 font-mono mb-2">
                             Found {filtered.length} matches:
                           </div>
-                          {filtered.slice(0, 5).map((d, idx) => (
-                            <div>
-                            {scrollStates[`diagnosis-${d.id}`]?.canScrollUp && (
-                            <div className="absolute top-0 left-0 right-0 h-8 bg-linear-to-b from-card to-transparent z-10 flex items-start justify-center pointer-events-none">
-                              <ChevronUp className="w-5 h-5 text-primary" />
-                              </div>
-                            )}
-                            <motion.div
-                            key={d.id}
-                            onClick={() => {
-                              setSelected(d)
-                              
-                              setHighlightedIndex(-1)
-                              setQuery('')
-                              }}
-                              ref={(el) => { scrollRefs.current[`diagnosis-${d.id}`] = el }}
-                              style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
-                              onScroll={() => handleScroll(`diagnosis-${d.id}`)}
-                              className={`w-full text-left p-3 rounded-lg transition-all ${
-                                highlightedIndex === idx 
-                                  ? 'bg-emerald-400/10 border-emerald-400/30' 
-                                  : 'bg-slate-800/30 dark:bg-slate-900/30 hover:bg-slate-700/30 dark:hover:bg-slate-800/30'
-                              } border border-slate-600/30 dark:border-slate-700/30`}
-                              onMouseEnter={() => setHighlightedIndex(idx)}
-                              initial={{ opacity: 0, y: 10 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ duration: 0.2, delay: idx * 0.05 }}
-                              whileHover={{ scale: 1.02 }}
-                            >
-                              <div className="text-sm font-medium text-slate-100 dark:text-slate-200">{d.title}</div>
-                              <div className="text-xs text-emerald-400 font-mono mt-1">ICD-11: {d.icd}</div>
-                            </motion.div>
-                            {scrollStates[`diagnosis-${d.id}`]?.canScrollDown && (
-                              <div className="absolute bottom-0 left-0 right-0 h-8 bg-linear-to-t from-card to-transparent z-10 flex items-end justify-center pointer-events-none">
-                                <ChevronDown className="w-5 h-5 text-primary" />
-                              </div>
-                            )}
+                          
+                          {/* Scroll Up Indicator with Blur */}
+                          {canScrollUpResults && (
+                            <div className="absolute top-6 left-0 right-0 h-12 bg-linear-to-b from-slate-900 via-slate-900/60 to-transparent dark:from-slate-950 dark:via-slate-950/60 z-10 flex items-start justify-center pointer-events-none rounded-t-lg backdrop-blur-sm">
+                              <ChevronUp className="w-5 h-5 text-emerald-400 mt-2" />
                             </div>
-                          ))}
+                          )}
+
+                          {/* Scrollable Results Container */}
+                          <div 
+                            ref={resultsScrollRef}
+                            className="space-y-2 max-h-64 overflow-y-auto"
+                            style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+                            onScroll={handleResultsScroll}
+                          >
+                            {filtered.slice(0, 15).map((d, idx) => (
+                              <motion.button
+                                key={d.id}
+                                onClick={() => {
+                                  setSelected(d)
+                                  setHighlightedIndex(-1)
+                                  setQuery('')
+                                }}
+                                className={`w-full text-left p-3 rounded-lg transition-all ${
+                                  highlightedIndex === idx 
+                                    ? 'bg-emerald-400/10 border-emerald-400/30' 
+                                    : 'bg-slate-800/30 dark:bg-slate-900/30 hover:bg-slate-700/30 dark:hover:bg-slate-800/30'
+                                } border border-slate-600/30 dark:border-slate-700/30`}
+                                onMouseEnter={() => setHighlightedIndex(idx)}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.2, delay: idx * 0.05 }}
+                              >
+                                <div className="text-sm font-medium text-slate-100 dark:text-slate-200">{d.title}</div>
+                                <div className="text-xs text-emerald-400 font-mono mt-1">ICD-11: {d.icd}</div>
+                              </motion.button>
+                            ))}
+                          </div>
+
+                          {/* Scroll Down Indicator with Blur */}
+                          {canScrollDownResults && (
+                            <div className="absolute bottom-0 left-0 right-0 h-12 bg-linear-to-t from-slate-900 via-slate-900/60 to-transparent dark:from-slate-950 dark:via-slate-950/60 flex items-end justify-center pointer-events-none rounded-b-lg backdrop-blur-sm">
+                              <ChevronDown className="w-5 h-5 text-emerald-400 mb-2" />
+                            </div>
+                          )}
                         </motion.div>
                       )}
 
