@@ -19,10 +19,47 @@ const patientsRouter = require('./routes/patients')
 const notificationsRouter = require('./routes/notifications')
 const groqRouter = require('./routes/groq')
 
+// Environment validation
+console.log('=== HealthSync Backend Startup ===')
+console.log('Environment:', process.env.NODE_ENV || 'development')
+
+// Critical environment variables check
+const requiredEnvVars = {
+  JWT_SECRET: process.env.JWT_SECRET,
+  MONGODB_URI: process.env.MONGODB_URI,
+}
+
+const missingEnvVars = Object.entries(requiredEnvVars)
+  .filter(([key, value]) => !value && key === 'JWT_SECRET')
+  .map(([key]) => key)
+
+if (missingEnvVars.length > 0) {
+  console.error('❌ CRITICAL ERROR: Missing required environment variables:', missingEnvVars.join(', '))
+  console.error('JWT_SECRET must be set for authentication to work!')
+  process.exit(1)
+}
+
+// Warnings for optional but recommended vars
+if (!process.env.MONGODB_URI) {
+  console.warn('⚠️ WARNING: MONGODB_URI not set. Using in-memory storage (data will be lost on restart).')
+}
+
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'change-this-secret') {
+  console.warn('⚠️ WARNING: JWT_SECRET is using default or placeholder value. For production, use a strong random secret!')
+}
+
+console.log('✓ Environment validation passed')
+
 const app = express()
 const server = http.createServer(app)
 const PORT = process.env.PORT || 4000
 const JWT_SECRET = process.env.JWT_SECRET
+
+// Log configuration
+console.log('Server Configuration:')
+console.log('- Port:', PORT)
+console.log('- Frontend URLs:', (process.env.FRONTEND_URL || 'none') + ', localhost:3000, localhost:5173')
+console.log('- Socket.IO:', process.env.ENABLE_SOCKETS === 'true' ? 'enabled' : 'disabled')
 
 // Socket.IO setup - only enable on Render (not Vercel serverless)
 const ENABLE_SOCKETS = process.env.ENABLE_SOCKETS === 'true'
@@ -104,15 +141,51 @@ if (ENABLE_SOCKETS) {
 app.set('io', io)
 app.set('userSockets', userSockets)
 
-app.use(cors({
-  origin: [
-    'https://healthsync-react.vercel.app',
-    'http://localhost:3000',
-  ],
+// Enhanced CORS configuration
+const FRONTEND_URLS = [
+  process.env.FRONTEND_URL,
+  'https://healthsync-react.vercel.app',
+  'https://healthsync-fawn.vercel.app',
+  'http://localhost:3000',
+  'http://localhost:5173', // Vite default port
+].filter(Boolean)
+
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps, curl)
+    if (!origin) {
+      console.debug('[CORS] No origin provided, allowing request')
+      return callback(null, true)
+    }
+    
+    // Check if origin is in whitelist
+    const isAllowed = FRONTEND_URLS.some(url => {
+      if (typeof url === 'string') {
+        return origin === url || origin.startsWith(url.replace(/\/$/, ''))
+      }
+      return false
+    })
+    
+    if (isAllowed) {
+      console.debug('[CORS] Origin allowed:', origin)
+      callback(null, true)
+    } else {
+      console.warn('[CORS] Origin not allowed:', origin)
+      callback(new Error(`Origin ${origin} not allowed by CORS`))
+    }
+  },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}))
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With'],
+  exposedHeaders: ['Content-Type', 'Authorization'],
+  optionsSuccessStatus: 200,
+  preflightContinue: false,
+}
+
+app.use(cors(corsOptions))
+
+// Handle preflight OPTIONS requests explicitly
+app.options('*', cors(corsOptions))
 app.use(express.json({ limit: '5mb' }))
 
 app.use('/api/auth', authRouter)
