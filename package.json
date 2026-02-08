@@ -3,6 +3,14 @@
   "private": true,
   "version": "0.0.0",
   "workspaces": [],
+  "scripts": {
+    "test:auth": "node test-auth.js",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd react && npm run dev",
+    "setup": "npm run setup:backend && npm run setup:frontend",
+    "setup:backend": "cd backend && cp -n .env.example .env || true",
+    "setup:frontend": "cd react && cp -n .env.production .env || true"
+  },
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
